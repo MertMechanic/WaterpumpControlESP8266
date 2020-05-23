@@ -202,7 +202,9 @@ void CWifi::wifiConnect()
         // WiFi.softAP(initssid, initpassword, 1, 0);
 
         WiFi.softAP(initssid);
-        
+
+        WiFi.setAutoReconnect(true);
+
         // if DNSServer is started with "*" for domain name, it will reply with
         // provided IP to all DNS request
         this->m_dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
@@ -213,6 +215,8 @@ void CWifi::wifiConnect()
 
     WiFi.printDiag(Serial);
 
+
+
     if(this->isInAPMode())
     {
         this->getWebserver().setupWebPageAPMode();
@@ -221,6 +225,7 @@ void CWifi::wifiConnect()
     {
         this->getWebserver().setupWebPageNormalMode();
     }
+    
 }
 
 
