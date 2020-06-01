@@ -3,6 +3,7 @@
 
 #include "CTimeWaterPump.h"
 #include "Defines.h"
+#include "Ticker.h"
 
 class NTPClient       ;
 class ESP8266WebServer;
@@ -11,7 +12,6 @@ class CWaterPump      ;
 class CWifi           ;
 class WiFiUDP         ;
 class CWebServer      ;
-
 
 class CWaterPumpControl
 {
@@ -51,6 +51,11 @@ public:
     CTimeWaterPump *getRestartTimeWithDelay();
     CTimeWaterPump *getCurrentCWaterPumpControlTime();
     static const int S_COUNTOFTIMESAVE = 3;
+
+
+    static void readInputButtons();
+
+    Ticker m_ButtonCallTicker;
 private:
     NTPClient *m_pTimeClient;
     Clcd *m_pLcd;
@@ -65,14 +70,13 @@ private:
     CTimeWaterPump* m_restartTimeWithDelay;
     CTimeWaterPump m_currentTime;
 
+    Ticker* getButtonCallTicker();
+
     void InitSerialSetup();
 
-    void setWaterIsEmpty();
-    void setWaterIsNotEmpty();
 
     void setStartTimeWithDelay();
 
-    void readInputButtons();
     void assignWaterPumpMode(WaterPumpModeType _mode);
 
 //Save a Stop Time (max = S_COUNTOFTIMESAVE)
@@ -86,5 +90,8 @@ private:
     //Counter is pointing to the position which need to be written next time ....
     int m_CurrentStopCounter;
     int m_CurrentRunCounter;
+
+    static void attachTimerToInputButtons();
+
 
 };

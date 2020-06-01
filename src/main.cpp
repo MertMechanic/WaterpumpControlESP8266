@@ -4,16 +4,34 @@
 #include "Defines.h"
 
 #include "CWaterPumpControl.h"
-// CWifi& wifi = CWifi::getInstance();
-// Clcd& lcd = Clcd::getInstance();
 
-// #define PIN_WIFI_RESET D0
-// CWaterPumpControl control;
 
-void setup() {
-      CWaterPumpControl::getInstance().init();
+//Basic Emergency Routine
+Ticker emergencyTicker;
+int watchdogCount = 0;
+void ISRWatchDog()
+{
+  watchdogCount++;
+  if (watchdogCount == 5)
+  {
+    Serial.println("Watchdog bites!");
+    ESP.reset();
+  }
+  
 }
 
-void loop() {
+void setup()
+{
+  //EmergencyTicker - attach
+  //if the run() loop not quitting the watchdogcount gets increased
+  //after 5 seconds - it will restart the esp
+
+  CWaterPumpControl::getInstance().init();
+  emergencyTicker.attach(1,ISRWatchDog);
+}
+
+void loop()
+{
+  watchdogCount = 0;
   CWaterPumpControl::getInstance().run();
 }

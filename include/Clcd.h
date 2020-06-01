@@ -29,14 +29,17 @@ private:
 private:
     //Init LCD Display
     LiquidCrystal_I2C *m_pLcd;
-    String m_LineA;
-    String m_LineB;
-    int mDisplayFlag;
-    int mCountOfRows;
-    int mCountOfSignsPerRows;
+    
+    //Storarge of the current showing strings
+    String m_Line[2];
+
+
+    int m_DisplayFlag;
+    const int m_CountOfRows = 2;
+    const int m_CountOfSignsPerRows = 16 ;
 
     const String mClearLineStr = "                ";
-
+    
 
 
 public:
@@ -45,6 +48,7 @@ public:
     
     void init(__uint8_t _sda_pin, __uint8_t _scl_pin);
 
+    void setLine(String *_pText, int _lineNumber);
     void setLineA(String *_pText);
     void setLineB(String *_pText);
 

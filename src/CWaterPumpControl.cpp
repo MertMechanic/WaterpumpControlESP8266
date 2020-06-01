@@ -1,6 +1,8 @@
 
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+
+
 #include "Arduino.h"
 #include "Defines.h"
 #include "CWaterPumpControl.h"
@@ -79,6 +81,9 @@ void CWaterPumpControl::init()
 
   //Test Relays
   this->m_pWaterpump->runTestRelaysModuleWithDelayOf(200);
+
+  this->attachTimerToInputButtons();
+
 }
 
 void CWaterPumpControl::InitSerialSetup()
@@ -160,14 +165,14 @@ void CWaterPumpControl::run()
         //Fountain filled and pump running
         if (this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpRunning())
         {
-          Serial.println("Fountain full + Pump running....");
+          // Serial.println("Fountain full + Pump running....");
 
           this->m_pLcd->showWaterIsNotEmptySinceTime();
         }
         //Fountain filled and pump Stopped
         else if (this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
         {
-          Serial.println("Fountain full + Pump stopped....");
+          // Serial.println("Fountain full + Pump stopped....");
           this->m_pWaterpump->TurnOnWaterPump();
 
           this->saveRunTime(this->getCurrentCWaterPumpControlTime());
@@ -209,7 +214,7 @@ void CWaterPumpControl::run()
         //Fountain empty and pump running
         else if (!this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpRunning())
         {
-          Serial.println("Fountain empty + Pump running....");
+          // Serial.println("Fountain empty + Pump running....");
           this->m_pWaterpump->TurnOffWaterPump();
           this->saveStopTime(this->getCurrentCWaterPumpControlTime());
           String time;
@@ -220,7 +225,7 @@ void CWaterPumpControl::run()
         //Foundtain empty and pump Stopped
         else if (!this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
         {
-          Serial.println("Fountain empty + Pump stopped....");
+          // Serial.println("Fountain empty + Pump stopped....");
           String time;
           this->m_pLcd->showWaterIsEmpty(this->getCurrentCWaterPumpControlTime()->getAsString(&time));
         }
@@ -239,7 +244,7 @@ void CWaterPumpControl::run()
     }
 
     //Read Inputs
-    this->readInputButtons();
+    // this->readInputButtons();
 
     //update Time....
     this->m_pTimeClient->update();
@@ -247,7 +252,7 @@ void CWaterPumpControl::run()
     this->m_pWebServer->getESP8266WebServer()->handleClient();
 
     // Wait 1s .... aka 1 Turn....
-    delay(100);
+    // delay(100);
   }
 }
 
@@ -284,22 +289,25 @@ CTimeWaterPump *CWaterPumpControl::getStopRunTimeReversed(CTimeWaterPump* _desti
 
 CTimeWaterPump *CWaterPumpControl::getCurrentCWaterPumpControlTime()
 {
-  Serial.print("getCurrentWaterPumpControlTime");
+
   
   CTimeWaterPump time(this->m_pTimeClient->getHours(), this->m_pTimeClient->getMinutes(), this->m_pTimeClient->getSeconds());
   this->m_currentTime = time;
 
-  String tmp;
-  Serial.println(*this->m_currentTime.getAsString(&tmp));
+  //DEBUG
+  // Serial.print("getCurrentWaterPumpControlTime");
+  // String tmp;
+  // Serial.println(*this->m_currentTime.getAsString(&tmp));
 
   return &this->m_currentTime;
 }
+
 
 void CWaterPumpControl::readInputButtons()
 {
 
   //In Auto Mode
-  if (this->m_pWaterpump->getWaterPumpMode() == AUTO)
+  if (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode() == AUTO)
   {
     //Left Button pressed
     if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
@@ -310,22 +318,22 @@ void CWaterPumpControl::readInputButtons()
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
     {
       Serial.println("middle pressed in automode");
-      this->m_pWaterpump->setWaterPumpMode(WaterPumpModeType::MANUELON);
+      CWaterPumpControl::getInstance().getWaterPump()->setWaterPumpMode(WaterPumpModeType::MANUELON);
     }
     //Right Button pressed
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
     {
       Serial.println("right pressed in automode");
-      this->m_pWaterpump->setWaterPumpMode(WaterPumpModeType::MANUELOFF);
+            CWaterPumpControl::getInstance().getWaterPump()->setWaterPumpMode(WaterPumpModeType::MANUELOFF);
     }
   }
-  else if (this->m_pWaterpump->getWaterPumpMode() == MANUELON)
+  else if (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode()  == MANUELON)
   {
     //Left Button pressed
     if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
     {
       Serial.println("left pressed in MANUELON");
-      this->assignWaterPumpMode(WaterPumpModeType::AUTO);
+      CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::AUTO);
     }
     //Middle Button pressed
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
@@ -336,22 +344,22 @@ void CWaterPumpControl::readInputButtons()
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
     {
       Serial.println("right pressed in MANUELON");
-      this->assignWaterPumpMode(WaterPumpModeType::MANUELOFF);
+            CWaterPumpControl::getInstance().getWaterPump()->setWaterPumpMode(WaterPumpModeType::MANUELOFF);
     }
   }
-  else if (this->m_pWaterpump->getWaterPumpMode() == MANUELOFF)
+  else if (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode()  == MANUELOFF)
   {
     //Left Button pressed
     if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
     {
       Serial.println("left pressed in MANUELOFF");
-      this->assignWaterPumpMode(WaterPumpModeType::AUTO);
+       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::AUTO);
     }
     //Middle Button pressed
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
     {
       Serial.println("middle pressed in MANUELOFF");
-      this->assignWaterPumpMode(WaterPumpModeType::MANUELON);
+      CWaterPumpControl::getInstance().getWaterPump()->setWaterPumpMode(WaterPumpModeType::MANUELON);
     }
     //Right Button pressed
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
@@ -383,14 +391,14 @@ void CWaterPumpControl::changeModeToAuto()
     }
 
     showStr = showStr + lastMaxStr;
-    this->m_pLcd->setLineB(&showStr);
+    this->m_pLcd->setLine(&showStr, 1);
     this->m_DisplayFlag = true;
   }
   else
   {
     this->m_DisplayFlag = false;
     String time(this->m_pTimeClient->getFormattedTime());
-    this->m_pLcd->setLineB(&time);
+    this->m_pLcd->setLine(&time, 1);
   }
 }
 void CWaterPumpControl::changeModeToManuelOn()
@@ -422,70 +430,7 @@ void CWaterPumpControl::setTurnOnDelay(int _startDelayInMinutes)
   this->m_pLcd->setDisplayText(&outputLcdLine1, &outputLcdLine2);
 }
 
-void CWaterPumpControl::setWaterIsEmpty()
-{
-  // if (statusHasChanged)
-  // {
-  //   pLCDDisplay->getLCDInstance()->backlight();
-  //   statusHasChanged = false;
 
-  // }
-
-  // status = String("Brunnen Leer");
-  // String secondsCounterText(secondsCounter);
-  // LCDLine2 = ("Seit: "+ secondsCounterText + "s");
-  // String linieA(statusText + status);
-  // pLCDDisplay->setDisplayText(&linieA, &LCDLine2);
-  // //////writeLCD(&linieA, &LCDLine2);
-  // Serial.print("Secondscounter is:");
-  // Serial.print(secondsCounter);
-
-  // delay(1000);
-  // secondsCounter++;
-}
-void CWaterPumpControl::setWaterIsNotEmpty()
-{
-  // if (statusHasChanged)
-  // {
-  //   if (secondsCounter > lastMaxSwitchCounter)
-  //   {
-  //     lastMaxSwitchCounter = secondsCounter;
-  //   }
-
-  //   secondsCounter = 0;
-  //   TurnOffBacklightCounter = 0;
-
-  //   statusHasChanged = false;
-  // }
-  // pLCDDisplay->getLCDInstance()->backlight();
-  // status = String("Brunnen gefuellt");
-
-  // if (displayFlag)
-  // {
-  //   LCDLine2 = (timeClient.getFormattedTime());
-
-  //   displayFlag = false;
-  // }
-  // else
-  // {
-  //   //Show last seconds
-  //   LCDLine2 = "MaxZeit: " + String(lastMaxSwitchCounter) + "s";
-
-  //   displayFlag = true;
-  // }
-
-  // TurnOffBacklightCounter++;
-
-  // if(TurnOffBacklightInSeconds == TurnOffBacklightCounter)
-  // {
-  //   pLCDDisplay->getLCDInstance()->noBacklight();
-  // }
-
-  // String linieA(statusText + status);
-  // pLCDDisplay->setDisplayText(&linieA, &LCDLine2);
-
-  // delay(1000);
-}
 
 bool CWaterPumpControl::isWaterInFountain()
 {
@@ -528,4 +473,15 @@ void CWaterPumpControl::setStartTimeWithDelay()
 CTimeWaterPump *CWaterPumpControl::getRestartTimeWithDelay()
 {
   return this->m_restartTimeWithDelay;
+}
+
+
+void CWaterPumpControl::attachTimerToInputButtons()
+{
+  CWaterPumpControl::getInstance().getButtonCallTicker()->attach_ms(50, CWaterPumpControl::readInputButtons);
+}
+
+Ticker* CWaterPumpControl::getButtonCallTicker()
+{
+  return &this->m_ButtonCallTicker;
 }
