@@ -15,8 +15,6 @@ void Clcd::init(__uint8_t _sda_pin, __uint8_t _scl_pin)
 {
     this->m_DisplayFlag = 0;
 
-
-
     m_pLcd = new LiquidCrystal_I2C(0x27, this->m_CountOfSignsPerRows, this->m_CountOfRows);
 
     // Wire.begin(PIN_SDA, PIN_SCL); //SDA //SCL
@@ -37,7 +35,8 @@ void Clcd::init(__uint8_t _sda_pin, __uint8_t _scl_pin)
             delay(50);
         }
     }
-    
+    this->m_Line[0] = "                "; //Should be 16 chars
+    this->m_Line[1] = "                ";
 }
 
 
@@ -46,32 +45,57 @@ void Clcd::setLine(String *_pText, int _lineNumber)
 {
     if (this->m_Line[_lineNumber] != *_pText)
     {
-        //Overrride complete String
-        // this->m_LineA = *_pText;
-        // m_pLcd->setCursor(0, 0); // Cursor0 , Linea0
-        // m_pLcd->print(mClearLineStr);
-        // m_pLcd->setCursor(0, 0);
-        // m_pLcd->print(*_pText);
-
-        //Override just chars
-        //Check each char for change:
-        int lenght = this->m_Line[_lineNumber].length();
-        const char* str = this->m_Line[_lineNumber].c_str();
-        const char* newStr = _pText->c_str();
-      
-        for (size_t i = 0; i < this->m_Line[_lineNumber].length() - 1 ; i++)
-        {
-            if (str[i] != newStr[i])
-            {
-                m_pLcd->setCursor(i,_lineNumber);
-                m_pLcd->print(newStr[i]);
-            }
-        }
+        // Overrride complete String
         this->m_Line[_lineNumber] = *_pText;
+        m_pLcd->setCursor(0, _lineNumber); // Cursor0 , Linea0
+        m_pLcd->print(mClearLineStr);
+        m_pLcd->setCursor(0, _lineNumber);
+        m_pLcd->print(*_pText);
+        this->m_Line[_lineNumber] = *_pText;
+
+
+        //TODO TASK, just override real sign instead of updateing hole line
+        // //Override just chars
+        // //Check each char for change:
+        // const char *str = this->m_Line[_lineNumber].c_str();
+        // const char *newStr = _pText->c_str();
+        // char newStrChar[17] = "                ";
+        
+
+        
+        
+        // Serial.print("NewChar is1:");
+        // Serial.println(newStrChar);
+
+        // if (_pText->length() < this->m_CountOfSignsPerRows)
+        // {
+        //     for (size_t i = 0; i < _pText->length(); i++)
+        //     {
+        //         newStrChar[i] = newStr[i];
+        //     }            
+        // }
+        // Serial.print("NewChar is2:");
+        // Serial.println(newStrChar);
+
+        // for (size_t i = 0; i < this->m_CountOfSignsPerRows + 1 ; i++)
+        // {
+        //     if (str[i] != newStrChar[i])
+        //     {
+        //         m_pLcd->setCursor(i,_lineNumber);
+        //         m_pLcd->print(newStrChar[i]);
+        //     }
+        // }
+        
+        // // this->m_Line[_lineNumber] = *_pText;
     }
 }
 
 
+    void Clcd::turnOffBackLight()
+    {
+        this->m_pLcd->noBacklight();
+        CWaterPumpControl::getInstance().deattachTimerToBackLightTurnoff();
+    }
 
 void Clcd::setDisplayText(String *_pTextA, String *_pTextB)
 {

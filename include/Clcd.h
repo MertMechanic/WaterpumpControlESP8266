@@ -39,8 +39,6 @@ private:
     const int m_CountOfSignsPerRows = 16 ;
 
     const String mClearLineStr = "                ";
-    
-
 
 public:
 
@@ -62,4 +60,7 @@ public:
 
     void showMenu();
     void showWaterIsNotEmptySinceTime();
+
+    void turnOffBackLight();
+    
 };

@@ -33,7 +33,12 @@ CWaterPumpControl::~CWaterPumpControl()
 void CWaterPumpControl::init()
 {
   ///INIT PINS
-  pinMode(PIN_WATERLIMIT_INPUT, INPUT); // Waterlimit switch
+  // pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP); // Waterlimit switch
+  // pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP); // Waterlimit switch
+  pinMode(PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT); // Waterlimit switch
+  digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH);
+  pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP);
+
   pinMode(PIN_RELAIS_0, OUTPUT);        // Relais 0
   pinMode(PIN_RELAIS_1, OUTPUT);        // Relais 1
   pinMode(PIN_BUTTON_LEFT, INPUT_PULLUP);
@@ -50,7 +55,8 @@ void CWaterPumpControl::init()
 
   this->m_pLcd = &Clcd::getInstance();
 
-  ///INIT WIFISetup
+  ////INIT WIFISetup
+  //
   CWifi::getInstance().initWithLCD(Clcd::getInstance(), PIN_WIFI_RESET);
 
   this->m_pWifi = &CWifi::getInstance();
@@ -58,8 +64,12 @@ void CWaterPumpControl::init()
 
   this->m_pNtpUDP = new WiFiUDP();
   this->m_pTimeClient = new NTPClient(*m_pNtpUDP, "europe.pool.ntp.org", 3600, 60000);
+  //
+  ////INIT WIFI SETUP
 
-  ///INIT TIME
+
+  ///INIT TIME VALUES
+  //
   m_pTimeClient->begin();
   //ChangeToSummerTime
   m_pTimeClient->setTimeOffset(7200);
@@ -72,7 +82,8 @@ void CWaterPumpControl::init()
   }
   this->m_CurrentRunCounter = 0; //Increase every time when is saved ... < 3 set to 0
   this->m_CurrentStopCounter = 0;
-  //End INIT VALUES
+  //
+  ////End INIT TIME VALUES
 
   this->m_restartTimeWithDelay = nullptr;
 
@@ -81,6 +92,8 @@ void CWaterPumpControl::init()
 
   //Test Relays
   this->m_pWaterpump->runTestRelaysModuleWithDelayOf(200);
+
+
 
   this->attachTimerToInputButtons();
 
@@ -128,7 +141,8 @@ void CWaterPumpControl::saveRunTime(CTimeWaterPump *_ptime)
 //Main Method
 void CWaterPumpControl::run()
 {
-
+  
+  
   this->m_pWifi->run(); //Handle reset Button
                         //HTTP Requests
                         //DNS for AP
@@ -399,6 +413,8 @@ void CWaterPumpControl::changeModeToAuto()
     this->m_DisplayFlag = false;
     String time(this->m_pTimeClient->getFormattedTime());
     this->m_pLcd->setLine(&time, 1);
+    this->m_pLcd->getLCDInstance()->backlight();
+    this->attachTimerToBackLightTurnoff();
   }
 }
 void CWaterPumpControl::changeModeToManuelOn()
@@ -408,14 +424,19 @@ void CWaterPumpControl::changeModeToManuelOn()
   String str(".._-.Manuel.-_..");
   String str2("------ON-------");
   this->m_pLcd->setDisplayText(&str, &str2);
+  this->m_pLcd->getLCDInstance()->backlight();
+  this->attachTimerToBackLightTurnoff();
 }
 void CWaterPumpControl::changeModeToManuelOff()
 {
+
   this->getWaterPump()->setWaterPumpMode(MANUELOFF);
   this->m_pWaterpump->TurnOffWaterPump();
   String str(".._-.Manuel.-_..");
   String str2("-----OFF-------");
   this->m_pLcd->setDisplayText(&str, &str2);
+  this->m_pLcd->getLCDInstance()->backlight();
+  this->attachTimerToBackLightTurnoff();
 }
 
 void CWaterPumpControl::setTurnOnDelay(int _startDelayInMinutes)
@@ -434,7 +455,13 @@ void CWaterPumpControl::setTurnOnDelay(int _startDelayInMinutes)
 
 bool CWaterPumpControl::isWaterInFountain()
 {
-  return digitalRead(PIN_WATERLIMIT_INPUT);
+  if (analogRead(PIN_WATERLIMIT_INPUT) > 200)
+  {
+    return true;
+  }
+  return false;
+  
+  // return digitalRead(PIN_WATERLIMIT_INPUT);
 }
 
 void CWaterPumpControl::assignWaterPumpMode(WaterPumpModeType _mode)
@@ -485,3 +512,22 @@ Ticker* CWaterPumpControl::getButtonCallTicker()
 {
   return &this->m_ButtonCallTicker;
 }
+
+
+
+void CWaterPumpControl::attachTimerToBackLightTurnoff()
+{
+  CWaterPumpControl::getInstance().getLCDBacklightTicker()->attach_ms(5000, CWaterPumpControl::turnOffBackLight);
+}
+
+void CWaterPumpControl::turnOffBackLight()
+{
+  Clcd::getInstance().getLCDInstance()->noBacklight();
+  CWaterPumpControl::getInstance().getLCDBacklightTicker()->detach();
+}
+
+Ticker* CWaterPumpControl::getLCDBacklightTicker()
+{
+  return &this->m_LCDBackLightTicker;
+}
+

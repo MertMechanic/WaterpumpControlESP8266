@@ -56,6 +56,10 @@ public:
     static void readInputButtons();
 
     Ticker m_ButtonCallTicker;
+    Ticker m_LCDBackLightTicker;
+    static void deattachTimerToBackLightTurnoff();
+
+
 private:
     NTPClient *m_pTimeClient;
     Clcd *m_pLcd;
@@ -71,6 +75,7 @@ private:
     CTimeWaterPump m_currentTime;
 
     Ticker* getButtonCallTicker();
+    Ticker* getLCDBacklightTicker();
 
     void InitSerialSetup();
 
@@ -92,6 +97,7 @@ private:
     int m_CurrentRunCounter;
 
     static void attachTimerToInputButtons();
-
+    static void attachTimerToBackLightTurnoff();
+    static void turnOffBackLight();
 
 };
