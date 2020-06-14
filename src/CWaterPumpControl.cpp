@@ -15,8 +15,12 @@
 #include "ESPAsyncWebServer.h"
 #include "C2RelayModule.h"
 
+
 CWaterPumpControl::CWaterPumpControl()
 {
+    //SaveTime
+  this->m_LastPumpRunTimeArray = CTemplateRingBuffer<CTimeWaterPump>(this->S_SIZEOFTIMESSAVED);
+  this->m_LastStopTimeArray = CTemplateRingBuffer<CTimeWaterPump>(this->S_SIZEOFTIMESSAVED);
   //STD Constructor - no output cause Serial setup is not finished....
 }
 
@@ -33,17 +37,20 @@ CWaterPumpControl::~CWaterPumpControl()
 void CWaterPumpControl::init()
 {
   ///INIT PINS
-  // pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP); // Waterlimit switch
-  // pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP); // Waterlimit switch
-  pinMode(PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT); // Waterlimit switch
-  digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH);
-  pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP);
+  //
+  //NOTE - The Normal 5V Pin can not be used as switich pin because 
+  //       there is a problem when 5V is connected to input pin in 
+  //       boot sequence
+  //
+  pinMode(PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT);    // Waterlimit Switch
+  digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH); // Waterlimit Pin HIGH
+  pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP);    // Watrelimit Input Pin
 
-  pinMode(PIN_RELAIS_0, OUTPUT);        // Relais 0
-  pinMode(PIN_RELAIS_1, OUTPUT);        // Relais 1
-  pinMode(PIN_BUTTON_LEFT, INPUT_PULLUP);
-  pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP);
-  pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);
+  pinMode(PIN_RELAIS_0, OUTPUT);                  // Relais 0
+  pinMode(PIN_RELAIS_1, OUTPUT);                  // Relais 1
+  pinMode(PIN_BUTTON_LEFT, INPUT_PULLUP);         // Input Pins Button          
+  pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP);       // Input Pins Button 
+  pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);        // Input Pins Button 
 
   ///INIT SERIAL
   Serial.println("Init Serial Setup");
@@ -52,7 +59,6 @@ void CWaterPumpControl::init()
   ///INIT DISPLAY
   Serial.println("Init LCD Setup");
   Clcd::getInstance().init(PIN_SDA, PIN_SCL);
-
   this->m_pLcd = &Clcd::getInstance();
 
   ////INIT WIFISetup
@@ -75,10 +81,10 @@ void CWaterPumpControl::init()
   m_pTimeClient->setTimeOffset(7200);
 
   //Init Values for time saving
-  for (int i = 0; i < this->S_COUNTOFTIMESAVE; i++)
+  for (int i = 0; i < this->S_SIZEOFTIMESSAVED; i++)
   {
     this->m_LastPumpRunTimeArray[i] = CTimeWaterPump(0, 0, 0);
-    this->m_LastPumpStopTimeArray[i] = CTimeWaterPump(0, 0, 0);
+    this->m_LastStopTimeArray[i] = CTimeWaterPump(0, 0, 0);
   }
   this->m_CurrentRunCounter = 0; //Increase every time when is saved ... < 3 set to 0
   this->m_CurrentStopCounter = 0;
@@ -112,10 +118,13 @@ void CWaterPumpControl::saveStopTime(CTimeWaterPump *_ptime)
   
   if (_ptime != nullptr)
   {
-    this->m_LastPumpStopTimeArray[this->m_CurrentStopCounter] = *_ptime;
+    this->m_LastStopTimeArray.addValue(_ptime);
+
+    // this->m_LastPumpStopTimeArray[this->m_CurrentStopCounter] = *_ptime;
+    
     //increase Counter
     this->m_CurrentStopCounter++;
-    if (this->m_CurrentStopCounter == S_COUNTOFTIMESAVE + 1)
+    if (this->m_CurrentStopCounter == this->S_SIZEOFTIMESSAVED + 1)
     {
       this->m_CurrentStopCounter = 0;
     }
@@ -132,7 +141,7 @@ void CWaterPumpControl::saveRunTime(CTimeWaterPump *_ptime)
   this->m_LastPumpRunTimeArray[this->m_CurrentRunCounter] = *_ptime;
   //increase Counter
   this->m_CurrentRunCounter++;
-  if (this->m_CurrentRunCounter == S_COUNTOFTIMESAVE + 1)
+  if (this->m_CurrentRunCounter == this->S_SIZEOFTIMESSAVED + 1)
   {
     this->m_CurrentRunCounter = 0;
   }
@@ -271,17 +280,18 @@ void CWaterPumpControl::run()
 }
 
 //Return a reversed array of TimeWaterpump
-CTimeWaterPump *CWaterPumpControl::reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination)
+CTemplateRingBuffer<CTimeWaterPump>* CWaterPumpControl::reverseTimeWaterPumpArray(CTemplateRingBuffer<CTimeWaterPump> *_pArray, CTemplateRingBuffer<CTimeWaterPump> *_pDestination)
 {
 
   // CTimeWaterPump reversedTime[this->S_COUNTOFTIMESAVE];
-  int lastSavedCounter = this->m_CurrentRunCounter;
+  int lastSavedCounter = _pArray->getCurrentPosition();
+  // int lastSavedCounter = this->m_CurrentRunCounter;
 
-  for (size_t i = 0; i < this->S_COUNTOFTIMESAVE; i++)
+  for (size_t i = 0; i < _pArray->getBufferSize(); i++)
   {
     if (lastSavedCounter == 0)
     {
-      lastSavedCounter = this->S_COUNTOFTIMESAVE;
+      lastSavedCounter = _pArray->getBufferSize();
     }
     lastSavedCounter--;
     _pDestination[i] = _pArray[lastSavedCounter];
@@ -289,15 +299,15 @@ CTimeWaterPump *CWaterPumpControl::reverseTimeWaterPumpArray(CTimeWaterPump *_pA
   return _pDestination;
 }
 
-CTimeWaterPump *CWaterPumpControl::getSaveRunTimeReversed(CTimeWaterPump* _destination)
+CTemplateRingBuffer<CTimeWaterPump>* CWaterPumpControl::getSaveRunTimeReversed(CTemplateRingBuffer<CTimeWaterPump>* _destination)
 {
-  CTimeWaterPump *reversed = reverseTimeWaterPumpArray(this->m_LastPumpRunTimeArray, _destination);
+  CTemplateRingBuffer<CTimeWaterPump> *reversed = reverseTimeWaterPumpArray(&this->m_LastPumpRunTimeArray, _destination);
   return reversed;
 }
 
-CTimeWaterPump *CWaterPumpControl::getStopRunTimeReversed(CTimeWaterPump* _destination)
+CTemplateRingBuffer<CTimeWaterPump>* CWaterPumpControl::getStopRunTimeReversed(CTemplateRingBuffer<CTimeWaterPump>* _destination)
 {
-  CTimeWaterPump *reversed = reverseTimeWaterPumpArray(this->m_LastPumpStopTimeArray, _destination);
+  CTemplateRingBuffer<CTimeWaterPump> *reversed = reverseTimeWaterPumpArray(&this->m_LastStopTimeArray, _destination);
   return reversed;
 }
 
@@ -478,29 +488,30 @@ CWaterPump *CWaterPumpControl::getWaterPump()
   return this->m_pWaterpump;
 }
 
-void CWaterPumpControl::setStartTimeWithDelay()
-{
-  CTimeWaterPump LastStopTime;
-  LastStopTime = *this->getStopRunTimeReversed(&LastStopTime);
+//TODO
+// void CWaterPumpControl::setStartTimeWithDelay()
+// {
+//   CTimeWaterPump LastStopTime;
+//   LastStopTime = *this->getStopRunTimeReversed(&LastStopTime);
 
-  if (this->m_restartTimeWithDelay == nullptr)
-  {
-    this->m_restartTimeWithDelay = new CTimeWaterPump(LastStopTime);
-  }
-  else
-  {
-    *this->m_restartTimeWithDelay = LastStopTime;
-  }
+//   if (this->m_restartTimeWithDelay == nullptr)
+//   {
+//     this->m_restartTimeWithDelay = new CTimeWaterPump(LastStopTime);
+//   }
+//   else
+//   {
+//     *this->m_restartTimeWithDelay = LastStopTime;
+//   }
 
-  int TurnOnDelayInMinutes = this->m_pWaterpump->getTurnOnDelay();
+//   int TurnOnDelayInMinutes = this->m_pWaterpump->getTurnOnDelay();
 
-  this->m_restartTimeWithDelay->addMinutes(TurnOnDelayInMinutes);
-}
+//   this->m_restartTimeWithDelay->addMinutes(TurnOnDelayInMinutes);
+// }
 
-CTimeWaterPump *CWaterPumpControl::getRestartTimeWithDelay()
-{
-  return this->m_restartTimeWithDelay;
-}
+// CTimeWaterPump *CWaterPumpControl::getRestartTimeWithDelay()
+// {
+//   return this->m_restartTimeWithDelay;
+// }
 
 
 void CWaterPumpControl::attachTimerToInputButtons()

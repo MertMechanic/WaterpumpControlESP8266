@@ -4,6 +4,7 @@
 #include "CTimeWaterPump.h"
 #include "Defines.h"
 #include "Ticker.h"
+#include "CTemplateRingBuffer.h"
 
 class NTPClient       ;
 class ESP8266WebServer;
@@ -44,14 +45,15 @@ public:
     void changeModeToManuelOff();
     void setTurnOnDelay(int _TurnOnDelayInMinutes);
 
-    CTimeWaterPump *getSaveRunTimeReversed(CTimeWaterPump *_destination);
-    CTimeWaterPump *getStopRunTimeReversed(CTimeWaterPump *_destination);
+    CTemplateRingBuffer<CTimeWaterPump>  *getSaveRunTimeReversed(CTemplateRingBuffer<CTimeWaterPump> *_destination);
+    CTemplateRingBuffer<CTimeWaterPump>  *getStopRunTimeReversed(CTemplateRingBuffer<CTimeWaterPump>  *_destination);
 
     bool isWaterInFountain();
-    CTimeWaterPump *getRestartTimeWithDelay();
+    // CTimeWaterPump *getRestartTimeWithDelay();
     CTimeWaterPump *getCurrentCWaterPumpControlTime();
-    static const int S_COUNTOFTIMESAVE = 3;
 
+
+    static const int S_SIZEOFTIMESSAVED = 3;
 
     static void readInputButtons();
 
@@ -74,6 +76,7 @@ private:
     CTimeWaterPump* m_restartTimeWithDelay;
     CTimeWaterPump m_currentTime;
 
+
     Ticker* getButtonCallTicker();
     Ticker* getLCDBacklightTicker();
 
@@ -88,9 +91,21 @@ private:
     void saveStopTime(CTimeWaterPump *_pTime);
     void saveRunTime(CTimeWaterPump *_pTime);
 
-    CTimeWaterPump m_LastPumpStopTimeArray[S_COUNTOFTIMESAVE];
-    CTimeWaterPump m_LastPumpRunTimeArray[S_COUNTOFTIMESAVE];
-    CTimeWaterPump* reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination);
+
+
+    CTemplateRingBuffer<CTimeWaterPump> m_LastPumpRunTimeArray;
+    CTemplateRingBuffer<CTimeWaterPump> m_LastStopTimeArray;
+    
+    CTemplateRingBuffer<CTimeWaterPump>* reverseTimeWaterPumpArray(CTemplateRingBuffer<CTimeWaterPump> *_pArray, CTemplateRingBuffer<CTimeWaterPump> *_pDestination);
+    //OLD START
+    // CTimeWaterPump* reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination);
+
+
+    // CTimeWaterPump m_LastPumpStopTimeArray[S_COUNTOFTIMESAVE];
+    // CTimeWaterPump m_LastPumpRunTimeArray[S_COUNTOFTIMESAVE];
+    // CTimeWaterPump* reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination);
+    //OLD END 
+
 
     //Counter is pointing to the position which need to be written next time ....
     int m_CurrentStopCounter;

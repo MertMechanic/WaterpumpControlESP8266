@@ -61,33 +61,43 @@ void handleFetchDataForDashBoard()
     jsonObject["startdelay"] = String(StartDelay);
     jsonObject["mode"] = waterPumpModeStr;
 
-    CTimeWaterPump reverseArray[CWaterPumpControl::S_COUNTOFTIMESAVE];
+    // CTimeWaterPump reverseArray[CWaterPumpControl::S_SIZEOFTIMESSAVED];
+    CTemplateRingBuffer<CTimeWaterPump> reverseArray(CWaterPumpControl::S_SIZEOFTIMESSAVED);
 
     String tmp;
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(reverseArray)[0].getAsString(&tmp);
-    jsonObject["runtime1"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(reverseArray)[1].getAsString(&tmp);
-    jsonObject["runtime2"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(reverseArray)[2].getAsString(&tmp);
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)->getData(0).getAsString(&tmp);
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)->getData(1).getAsString(&tmp);
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)->getData(2).getAsString(&tmp);
+    
+    //TODO REMOVE
+    // // getAsString(&tmp);
+    // jsonObject["runtime1"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)[1]->getAsString(&tmp);
+    // jsonObject["runtime2"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)[2]->getAsString(&tmp);
 
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)->getData(0).getAsString(&tmp);
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)->getData(1).getAsString(&tmp);
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)->getData(2).getAsString(&tmp);
 
-    jsonObject["stoptime0"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(reverseArray)[0].getAsString(&tmp);
-    jsonObject["stoptime1"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(reverseArray)[1].getAsString(&tmp);
-    jsonObject["stoptime2"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(reverseArray)[2].getAsString(&tmp);
+    // jsonObject["stoptime0"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)[0].getAsString(&tmp);
+    // jsonObject["stoptime1"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)[1].getAsString(&tmp);
+    // jsonObject["stoptime2"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)[2].getAsString(&tmp);
 
 
     jsonObject["status"] = CWaterPumpControl::getInstance().isWaterInFountain();
 
-    if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpStopped())
-    {
-        jsonObject["restarttime"] = *CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tmp);
-    }
-    else if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpRunning())
-    {
-        jsonObject["restarttime"] = "is running";
-    }
-    else
-    {
-        jsonObject["restarttime"] = "not defined";
-    }
+//TODO
+    // if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpStopped())
+    // {
+    //     jsonObject["restarttime"] = *CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tmp);
+    // }
+    // else if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpRunning())
+    // {
+    //     jsonObject["restarttime"] = "is running";
+    // }
+    // else
+    // {
+    //     jsonObject["restarttime"] = "not defined";
+    // }
 
     String output;
     jsonObject.printTo(output);
