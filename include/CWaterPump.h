@@ -14,14 +14,12 @@ class CWaterPump
         }
 
         CWaterPump();
-        CWaterPump(C2RelayModule *_pRelaysModule, int _turnOnDelay, WaterPumpModeType _waterPumpMode, bool _isRunning, int _restartTimeInMinutes);
+        CWaterPump(C2RelayModule *_pRelaysModule, int _turnOnDelay, WaterPumpModeType _waterPumpMode, bool _isRunning);
         void TurnOnWaterPump();
         void TurnOffWaterPump();
         
         bool isWaterPumpRunning();
         bool isWaterPumpStopped();
-
-        void SetTurnONDelay(int _delayInMinutes);
 
         void setWaterPumpMode(WaterPumpModeType _newMode);
 
@@ -31,9 +29,8 @@ class CWaterPump
         C2RelayModule* getRelaysModule();
 
         void runTestRelaysModuleWithDelayOf(int _delay);
+        void setTurnONDelay(int _delayInMinutes);
         
-        int getRestartTimeInSeconds();
-        int getStartDelayInSeconds();
 
     private:
         bool m_isRunning;

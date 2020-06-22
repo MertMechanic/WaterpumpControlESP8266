@@ -4,7 +4,7 @@
 #include "CTimeWaterPump.h"
 #include "Defines.h"
 #include "Ticker.h"
-#include "CTemplateRingBuffer.h"
+#include "CTimeWaterPumpRingBuffer.h"
 
 class NTPClient       ;
 class ESP8266WebServer;
@@ -45,8 +45,8 @@ public:
     void changeModeToManuelOff();
     void setTurnOnDelay(int _TurnOnDelayInMinutes);
 
-    CTemplateRingBuffer<CTimeWaterPump>  *getSaveRunTimeReversed(CTemplateRingBuffer<CTimeWaterPump> *_destination);
-    CTemplateRingBuffer<CTimeWaterPump>  *getStopRunTimeReversed(CTemplateRingBuffer<CTimeWaterPump>  *_destination);
+    CTimeWaterPumpRingBuffer *getSaveRunTimeReversed();
+    CTimeWaterPumpRingBuffer *getStopRunTimeReversed();
 
     bool isWaterInFountain();
     // CTimeWaterPump *getRestartTimeWithDelay();
@@ -93,10 +93,10 @@ private:
 
 
 
-    CTemplateRingBuffer<CTimeWaterPump> m_LastPumpRunTimeArray;
-    CTemplateRingBuffer<CTimeWaterPump> m_LastStopTimeArray;
+    CTimeWaterPumpRingBuffer* m_pLastPumpRunTimeRingBuffer;
+    CTimeWaterPumpRingBuffer* m_pLastPumpStopTimeRingBuffer;
     
-    CTemplateRingBuffer<CTimeWaterPump>* reverseTimeWaterPumpArray(CTemplateRingBuffer<CTimeWaterPump> *_pArray, CTemplateRingBuffer<CTimeWaterPump> *_pDestination);
+    CTimeWaterPumpRingBuffer* reverseTimeWaterPumpArray(CTimeWaterPumpRingBuffer *_pArray, CTimeWaterPumpRingBuffer *_pDestination);
     //OLD START
     // CTimeWaterPump* reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination);
 

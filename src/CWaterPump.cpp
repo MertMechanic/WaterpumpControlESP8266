@@ -7,7 +7,7 @@ CWaterPump::CWaterPump()
 
 }
 
-CWaterPump::CWaterPump(C2RelayModule *_pRelaysModule, int _turnOnDelay, WaterPumpModeType _waterPumpMode, bool _isRunning, int _restartTimeInSeconds):
+CWaterPump::CWaterPump(C2RelayModule *_pRelaysModule, int _turnOnDelay, WaterPumpModeType _waterPumpMode, bool _isRunning):
 m_turnOnDelay(_turnOnDelay),
 m_WaterPumpmode(_waterPumpMode),
 m_isRunning(_isRunning)
@@ -28,7 +28,7 @@ void CWaterPump::TurnOffWaterPump()
     this->m_pRelayModule->TurnOffAllRelay();
     
 }
-void CWaterPump::SetTurnONDelay(int _delayInSeconds)
+void CWaterPump::setTurnONDelay(int _delayInSeconds)
 {
     this->m_turnOnDelay = _delayInSeconds;
 }
