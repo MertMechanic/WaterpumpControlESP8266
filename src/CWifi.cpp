@@ -71,6 +71,10 @@ uint8_t CWifi::getResetPin()
     return this->m_WifiResetPin;
 }
 
+String CWifi::getIpAddress()
+{
+    return this->m_pIP->toString();
+}
 
 void CWifi::wifiConnect()
 {

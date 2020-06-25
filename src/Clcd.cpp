@@ -2,6 +2,8 @@
 #include "Defines.h"
 #include "CWaterPumpControl.h"
 
+// #define debug
+
 Clcd::Clcd()
 {
 }
@@ -14,6 +16,7 @@ Clcd::~Clcd()
 void Clcd::init(__uint8_t _sda_pin, __uint8_t _scl_pin)
 {
     this->m_DisplayFlag = 0;
+    this->m_DisplayStatus = NONEDISPLAY_STATUS;
 
     m_pLcd = new LiquidCrystal_I2C(0x27, this->m_CountOfSignsPerRows, this->m_CountOfRows);
 
@@ -43,7 +46,8 @@ void Clcd::init(__uint8_t _sda_pin, __uint8_t _scl_pin)
 
 void Clcd::setLine(String *_pText, int _lineNumber)
 {
-    if (this->m_Line[_lineNumber] != *_pText)
+    this->turnOnBacklightAndTurnOffLater();
+    if (this->m_Line[_lineNumber].compareTo(*_pText) != 0)
     {
         // Overrride complete String
         this->m_Line[_lineNumber] = *_pText;
@@ -90,76 +94,136 @@ void Clcd::setLine(String *_pText, int _lineNumber)
     }
 }
 
-
-    void Clcd::turnOffBackLight()
-    {
-        this->m_pLcd->noBacklight();
-        CWaterPumpControl::getInstance().deattachTimerToBackLightTurnoff();
-    }
-
 void Clcd::setDisplayText(String *_pTextA, String *_pTextB)
 {
     this->setLine(_pTextA, 0);
     this->setLine(_pTextB, 1);
 }
 
-LiquidCrystal_I2C* Clcd::getLCDInstance()
+LiquidCrystal_I2C *Clcd::getLCDInstance()
 {
     return this->m_pLcd;
 }
 
-void Clcd::showMenu()
+void Clcd::showWaterIsEmpty(String *_pTtime)
 {
-        this->getLCDInstance()->backlight();
-        this->m_Line[0] = "Entering Menu...";
-        this->m_Line[1] = " ...";
-        this->setDisplayText(&m_Line[0], &m_Line[1]);
-        delay(500);
+    if (this->m_DisplayStatus != AUTO_EMPTY)
+    {
+        String line0("Brunnen ist Leer");
+        String line1("Seit: ");
+        line1 = line1 + *_pTtime;
 
-              //     1234567890123456
-        this->m_Line[0] = "Auto  ON     OFF";
-        this->m_Line[1] = " V     V      V ";
-        this->setDisplayText(&m_Line[0], &m_Line[1]);
+#ifdef debug
+        Serial.println(line0);
+        Serial.println(this->m_Line[0]);
+#endif
+        Clcd::getInstance().setDisplayText(&line0, &line1);
+
+        this->m_DisplayStatus = AUTO_EMPTY;
+    }
+}
+
+void Clcd::showWaterIsNotEmptySinceTime()
+{
+    if (this->m_DisplayStatus != AUTO_FULL)
+    {
+        String line0("Brunnen gefuellt");
+        String line1 = "Seit: ";
+        String time;
+        CWaterPumpControl::getInstance().getCurrentCWaterPumpControlTime()->getAsString(&time);
+
+        line1 = line1 + time;
+
+#ifdef debug
+        Serial.println(line0);
+        Serial.println(this->m_Line[0]);
+#endif
+
+        Clcd::getInstance().setDisplayText(&line0, &line1);
+
+        this->m_DisplayStatus = AUTO_FULL;
+    }
 }
 
 void Clcd::showManualON()
 {
-                  //     1234567890123456
-        this->m_Line[0] = "Auto  ON     OFF";
-        this->m_Line[1] = " V    XXX     V ";
-        this->setDisplayText(&m_Line[0], &m_Line[1]);
-}
+    //     1234567890123456
 
+    String a("Auto  ON     OFF");
+    String b(" V    XXX     V ");
+
+    this->setDisplayText(&a, &b);
+
+    this->m_DisplayStatus = MANUEL_ON;
+}
 
 void Clcd::showManualOFF()
 {
-                  //     1234567890123456
-        this->m_Line[0] = "Auto  ON     OFF";
-        this->m_Line[1] = " V     V     XXX";
-        this->setDisplayText(&m_Line[0], &m_Line[1]);
+    //     1234567890123456
+    String a("Auto  ON     OFF");
+    String b(" V     V     XXX");
+    this->setDisplayText(&a, &b);
+
+    this->m_DisplayStatus = MANUEL_OFF;
 }
 
-
-
-void Clcd::showWaterIsNotEmpty(String *_pTextLine2)
+void Clcd::turnOnBacklightAndTurnOffLater()
 {
-        String LineA("Brunnen gefuellt");
-        this->setDisplayText(&m_Line[0], &m_Line[1]);
+    this->m_pLcd->backlight();
+    this->attachTimerToBackLightTurnoff();
 }
 
-void Clcd::showWaterIsEmpty(String *_pTtime)
+void Clcd::attachTimerToBackLightTurnoff()
 {
-    String line1("Brunnen ist Leer");
-    String line2("Seit: ");
-    line2 = line2 + *_pTtime;
-    this->setDisplayText(&line1, &line2);
+    Clcd::getInstance().getLCDBacklightTicker()->attach_ms(5000, Clcd::turnOffBackLight);
 }
-void Clcd::showWaterIsNotEmptySinceTime()
-{
-    String since = "Seit: ";
-    String time;
-    CWaterPumpControl::getInstance().getCurrentCWaterPumpControlTime()->getAsString(&time);
 
-    String output = since + time;
-    this->showWaterIsNotEmpty(&output);
+void Clcd::turnOffBackLight()
+{
+    Clcd::getInstance().getLCDInstance()->noBacklight();
+    Clcd::getInstance().getLCDBacklightTicker()->detach();
+}
+
+Ticker *Clcd::getLCDBacklightTicker()
+{
+    return &this->m_LCDBackLightTicker;
+}
+
+void Clcd::setDisplayStatus(displayStatus _status)
+{
+    this->m_DisplayStatus = _status;
+}
+
+displayStatus Clcd::getDisplayStatus()
+{
+    return this->m_DisplayStatus;
+}
+
+void Clcd::showTurnLoadingRoutine(int _delay, const char *_ploadingSign, bool _direction, String *_pText)
+{
+    String Sign = String(*_ploadingSign);
+
+    Clcd::getLCDInstance()->clear();
+
+    String lineA = String(*_pText);
+    setLine(&lineA, 0);
+
+    if (_direction)
+    {
+        for (int i = 0; i < m_CountOfSignsPerRows; i++)
+        {
+            Clcd::getLCDInstance()->setCursor(i, 1);
+            Clcd::getLCDInstance()->print(Sign);
+            delay(_delay);
+        }
+    }
+    else
+    {
+        for (int i = m_CountOfSignsPerRows - 1; i >= 0; i--)
+        {
+            Clcd::getLCDInstance()->setCursor(i, 1);
+            Clcd::getLCDInstance()->print(Sign);
+            delay(_delay);
+        }
+    }
 }

@@ -33,7 +33,7 @@ private:
 //BASIC SINGLETON END
 
 public:
-    String getIpAdress();
+    String getIpAddress();
     void setIpAdress(int, int, int, int);
 
     void setSSID(String *_pSSID);

@@ -58,7 +58,7 @@ public:
     static void readInputButtons();
 
     Ticker m_ButtonCallTicker;
-    Ticker m_LCDBackLightTicker;
+
     static void deattachTimerToBackLightTurnoff();
 
 
@@ -110,9 +110,7 @@ private:
     //Counter is pointing to the position which need to be written next time ....
     int m_CurrentStopCounter;
     int m_CurrentRunCounter;
+        static void attachTimerToInputButtons();
 
-    static void attachTimerToInputButtons();
-    static void attachTimerToBackLightTurnoff();
-    static void turnOffBackLight();
 
 };

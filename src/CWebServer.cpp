@@ -67,21 +67,15 @@ void handleFetchDataForDashBoard()
 
     String tmp;
     jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(0)->getAsString(&tmp);
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(1)->getAsString(&tmp);
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(2)->getAsString(&tmp);
+    jsonObject["runtime1"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(1)->getAsString(&tmp);
+    jsonObject["runtime2"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(2)->getAsString(&tmp);
     
-    //TODO REMOVE
-    // // getAsString(&tmp);
-    // jsonObject["runtime1"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)[1]->getAsString(&tmp);
-    // jsonObject["runtime2"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed(&reverseArray)[2]->getAsString(&tmp);
 
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(0)->getAsString(&tmp);
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(1)->getAsString(&tmp);
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(2)->getAsString(&tmp);
+    jsonObject["stoptime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(0)->getAsString(&tmp);
+    jsonObject["stoptime1"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(1)->getAsString(&tmp);
+    jsonObject["stoptime2"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(2)->getAsString(&tmp);
 
-    // jsonObject["stoptime0"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)[0].getAsString(&tmp);
-    // jsonObject["stoptime1"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)[1].getAsString(&tmp);
-    // jsonObject["stoptime2"]      = *CWaterPumpControl::getInstance().getStopRunTimeReversed(&reverseArray)[2].getAsString(&tmp);
+
 
 
     jsonObject["status"] = CWaterPumpControl::getInstance().isWaterInFountain();

@@ -30,7 +30,7 @@ int watchdogCount = 0;
 void ISREmergencyRestartWatchDog()
 {
   watchdogCount++;
-  if (watchdogCount == 5)
+  if (watchdogCount == 10)
   {
     // Serial.println("Watchdog bites!");
     ESP.reset();
