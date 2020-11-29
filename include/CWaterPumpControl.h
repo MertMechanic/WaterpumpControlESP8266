@@ -14,12 +14,16 @@ class CWifi           ;
 class WiFiUDP         ;
 class CWebServer      ;
 
+    static bool S_FountainIsFilled;
+    static int S_WaterlimitCounter;                        //Counts the activation of the WaterLimitSwitch
+
 class CWaterPumpControl
 {
     
 
     //Stingleton START
 public:
+
     static CWaterPumpControl &getInstance()
     {
         static CWaterPumpControl S;
@@ -35,6 +39,8 @@ private:
     //Stingleton END
 
 public:
+
+
     //Main Method of Waterpumpcontrol
     void run();
     void init();
@@ -57,9 +63,11 @@ public:
 
     static void readInputButtons();
 
-    Ticker m_ButtonCallTicker;
+    Ticker m_CallTicker;
 
     static void deattachTimerToBackLightTurnoff();
+
+    static void readIsWaterInFountain();
 
 
 private:
@@ -77,7 +85,10 @@ private:
     CTimeWaterPump m_currentTime;
 
 
-    Ticker* getButtonCallTicker();
+
+    static const int S_ACTIVATELIMITBORDER = 100;
+
+    Ticker* getCallTicker();
     Ticker* getLCDBacklightTicker();
 
     void InitSerialSetup();
@@ -110,7 +121,7 @@ private:
     //Counter is pointing to the position which need to be written next time ....
     int m_CurrentStopCounter;
     int m_CurrentRunCounter;
-        static void attachTimerToInputButtons();
-
+    static void attachTimerToInputButtons();
+    static void attachTimerToReadFountainFilled();
 
 };

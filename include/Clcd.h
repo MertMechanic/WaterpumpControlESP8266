@@ -60,6 +60,7 @@ public:
     void showWaterIsEmpty(String *_pTime);
 
     void setDisplayText(String *_pTextA, String *_pTextB);
+    void setDisplayText(char *_pTextA, char *_pTextB);
 
     void showWaterIsNotEmptySinceTime();
 

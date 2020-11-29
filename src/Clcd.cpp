@@ -100,6 +100,14 @@ void Clcd::setDisplayText(String *_pTextA, String *_pTextB)
     this->setLine(_pTextB, 1);
 }
 
+void Clcd::setDisplayText(char *_pTextA, char *_pTextB)
+{
+    String a(*_pTextA);
+    String b(*_pTextB);
+    this->setDisplayText(&a,&b);
+}
+
+
 LiquidCrystal_I2C *Clcd::getLCDInstance()
 {
     return this->m_pLcd;

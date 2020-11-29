@@ -7,6 +7,7 @@
 
 #include "CWaterPumpControl.h"
 #include "CWaterPump.h"
+#include "Clcd.h"
 //
 //GLOBAL FUNCTIONS FOR WEBSERVER HTTP REQUESTS
 //
@@ -34,7 +35,7 @@ void handleAPModeRootPage()
 
 void handleFetchDataForDashBoard()
 {
-    Serial.println("fetchData... Dashbaoard");
+    Serial.println("fetchData... Dashboard");
     
     int StartDelay = CWaterPumpControl::getInstance().getWaterPump()->getTurnOnDelay();
 

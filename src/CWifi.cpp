@@ -1,3 +1,4 @@
+#include "Defines.h"
 #include "CWifi.h"
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
@@ -88,7 +89,7 @@ void CWifi::wifiConnect()
         this->m_pLcd->setDisplayText(&line1, &line2);
     }
 
-    delay(1000);
+    //delay(1000);
     this->m_isInAPMode = false;
 
     if (SPIFFS.exists("/config.json"))
@@ -117,11 +118,27 @@ void CWifi::wifiConnect()
 
                 if (this->m_pLcd != nullptr)
                 {
-
                     String line1("Try to connect:");
                     String line2(_ssid);
                     this->m_pLcd->setDisplayText(&line1, &line2);
                 }
+
+                #ifdef STATICIPADDRESS
+                           
+                    IPAddress StaticIP(STATICIPADDRESS);
+                    IPAddress GatewayIP(STATICGATEWAY);
+                    IPAddress Netmask(STATICSUBNETMASK);
+
+                    if (WiFi.config(StaticIP, GatewayIP, Netmask, GatewayIP, GatewayIP) == false) 
+                {
+                    String cfglcd1("Configuration");
+                    String cfglcd2("failed");
+                    Serial.println("Configuration failed.");
+                    this->m_pLcd->setDisplayText(&cfglcd1, &cfglcd2);
+                }
+                #endif
+
+
 
                 WiFi.mode(WIFI_STA);
                 WiFi.begin(_ssid, _pass);
@@ -163,9 +180,11 @@ void CWifi::wifiConnect()
         Serial.println(this->m_pGateway->toString());
         if (this->m_pLcd != nullptr)
         {
+
             String line1("IPAddress is:");
             String line2(this->m_pIP->toString());
             this->m_pLcd->setDisplayText(&line1, &line2);
+            delay(1000);
         }
         this->m_isInAPMode = false;
     }
@@ -255,6 +274,7 @@ void CWifi::run()
 
 //Listen to the Reset Button ... Interrupt everything and count 5 seconds 
 //if 5 seconds is finished - the wifi settings are resetete by deleteing the config file... 
+// Return false if Reset Routine is not finished 
 bool CWifi::handleResetButton()
 {
 
@@ -308,13 +328,11 @@ bool CWifi::handleResetButton()
         {
             SPIFFS.remove("/config.json");
             Serial.println("Remove Config file...");
-            wifiConnect();
+            this->wifiConnect();
         }
         return true;
     }
-    else
-    {
-        return false;
-    }
+
     
+    return false;  
 }
