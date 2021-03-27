@@ -81,6 +81,18 @@ void handleFetchDataForDashBoard()
 
     jsonObject["status"] = CWaterPumpControl::getInstance().isWaterInFountain();
 
+
+    CTimeWaterPump *pTime = CWaterPumpControl::getInstance().getRestartTimeWithDelay();
+    
+    if (pTime != nullptr)
+    {
+         jsonObject["restarttimestr"] = *pTime->getAsString(&tmp);
+    }
+    else
+    {
+        jsonObject["restarttimestr"] = "-";
+    }
+    
 //TODO
     // if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpStopped())
     // {
@@ -231,7 +243,7 @@ void CWebServer::setupWebPageNormalMode()
 
     this->getESP8266WebServer()->on("/startdelay", handleChangeStartDelay);
     this->getESP8266WebServer()->on("/changemode", handleChangeWaterPumpModeData);
-     
+    
 
     this->getESP8266WebServer()->begin();
 }

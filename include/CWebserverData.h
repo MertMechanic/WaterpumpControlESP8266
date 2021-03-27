@@ -30,7 +30,7 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 <tbody>
                 <tr>
                     <td>Zeit zum Wiedereinschalten:</td>
-                    <td><div id="restarttimeinmin">___</div></td>
+                    <td><div id="restarttimestr">___</div></td>
 
                 </tr>
                 <tr>
@@ -185,7 +185,7 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 var stoptime1str =  object.stoptime1;
                 var stoptime2str =  object.stoptime2;
 
-                var restarttimestr =  object.restarttime;
+                var restarttimestr =  object.restarttimestr;
 
                 switch(mode) {
                     case "AUTO":
@@ -218,7 +218,7 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 document.getElementById("stop1").innerText = stoptime1str;
                 document.getElementById("stop2").innerText = stoptime2str;
 
-                document.getElementById("restarttimeinmin").innerText = restarttimestr;
+                document.getElementById("restarttimestr").innerText = restarttimestr;
 
                 var status = object.status;
                 if (status)

@@ -14,8 +14,8 @@ class CWifi           ;
 class WiFiUDP         ;
 class CWebServer      ;
 
-    static bool S_FountainIsFilled;
-    static int S_WaterlimitCounter;                        //Counts the activation of the WaterLimitSwitch
+static bool S_FountainIsFilled;
+static int S_WaterlimitCounter;                        //Counts the activation of the WaterLimitSwitch
 
 class CWaterPumpControl
 {
@@ -63,39 +63,41 @@ public:
 
     static void readInputButtons();
 
-    Ticker m_CallTicker;
+
+    Ticker* getCallTickerInputButtons();
+    Ticker* getCallTickeReadFountainFilled();
+    Ticker* getLCDBacklightTicker();
 
     static void deattachTimerToBackLightTurnoff();
 
     static void readIsWaterInFountain();
 
+    CTimeWaterPump *getRestartTimeWithDelay();
 
 private:
-    NTPClient *m_pTimeClient;
-    Clcd *m_pLcd;
-    CWaterPump *m_pWaterpump;
-    CWifi *m_pWifi;
-    WiFiUDP *m_pNtpUDP;
-    CWebServer *m_pWebServer;
+    NTPClient   *m_pTimeClient;
+    Clcd        *m_pLcd;
+    CWaterPump  *m_pWaterpump;
+    CWifi       *m_pWifi;
+    WiFiUDP     *m_pNtpUDP;
+    CWebServer  *m_pWebServer;
 
     bool m_ModeHasChanged;
-    int m_DisplayFlag;
-    int m_LastSwitchCounter;
-    CTimeWaterPump* m_restartTimeWithDelay;
+    int  m_DisplayFlag;
+    int  m_LastSwitchCounter;
+    CTimeWaterPump* m_restartTimeWithDelay;  //A Date of Turning on 
     CTimeWaterPump m_currentTime;
 
 
+    static const int S_ACTIVATELIMITBORDER = 4;
 
-    static const int S_ACTIVATELIMITBORDER = 100;
 
-    Ticker* getCallTicker();
-    Ticker* getLCDBacklightTicker();
+    Ticker m_CallTickerInputButtons;
+    Ticker m_CallTickerFountainFilled;
+
 
     void InitSerialSetup();
-
-
     void setStartTimeWithDelay();
-
     void assignWaterPumpMode(WaterPumpModeType _mode);
 
 //Save a Stop Time (max = S_COUNTOFTIMESAVE)

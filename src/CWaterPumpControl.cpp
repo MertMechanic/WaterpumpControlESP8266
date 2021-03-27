@@ -14,14 +14,11 @@
 #include "ESPAsyncWebServer.h"
 #include "C2RelayModule.h"
 
-//#define debug 1
+#define debug 1
 
 
 CWaterPumpControl::CWaterPumpControl()
 {
-  //SaveTime#
-
-  //STD Constructor - no output cause Serial setup is not finished....
 }
 
 CWaterPumpControl::~CWaterPumpControl()
@@ -36,6 +33,11 @@ CWaterPumpControl::~CWaterPumpControl()
   // delete this->m_pLastPumpStopTimeRingBuffer;
 }
 
+/**
+ * @brief Init Method run - once before running run()
+ * -> Define PinMode of Arduino 
+ * 
+ */
 void CWaterPumpControl::init()
 {
   ///INIT PINS
@@ -44,21 +46,21 @@ void CWaterPumpControl::init()
   //       there is a problem when 5V is connected to input pin in
   //       boot sequence
   //
-  pinMode(PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT);    // Waterlimit Switch
-  digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH); // Waterlimit Pin HIGH
-  pinMode(PIN_WATERLIMIT_INPUT, INPUT_PULLUP);    // Watrelimit Input Pin
+  pinMode   (PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT);    // Waterlimit Switch
+  digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH);    // Waterlimit Pin HIGH
+  pinMode   (PIN_WATERLIMIT_INPUT, INPUT_PULLUP);    // Watrelimit Input Pin
 
   pinMode(PIN_RELAIS_0, OUTPUT);            // Relais 0
   pinMode(PIN_RELAIS_1, OUTPUT);            // Relais 1
-  pinMode(PIN_BUTTON_LEFT, INPUT_PULLUP);   // Input Pins Button
-  pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP); // Input Pins Button
-  pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);  // Input Pins Button
+  pinMode(PIN_BUTTON_LEFT, INPUT_PULLUP);   // Input Pins Button LEFT 
+  pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP); // Input Pins Button MIDDLE
+  pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);  // Input Pins Button RIGHT
 
 ///INIT SERIAL
 #ifdef debug
   Serial.println("Init Serial Setup");
 #endif
-  this->InitSerialSetup();
+  this->InitSerialSetup();  //init Serial out for Monitoring
 
 #ifdef debug
   Serial.println("Serial setup end...");
@@ -68,18 +70,18 @@ void CWaterPumpControl::init()
 #ifdef debug
   Serial.println("Init LCD Setup");
 #endif
-  Clcd::getInstance().init(PIN_SDA, PIN_SCL);
-  this->m_pLcd = &Clcd::getInstance();
+  Clcd::getInstance().init(PIN_SDA, PIN_SCL);     //Init LCD 
+  this->m_pLcd = &Clcd::getInstance();            //LCD Singleton
 
   ////INIT WIFISetup
   //
-  CWifi::getInstance().initWithLCD(Clcd::getInstance(), PIN_WIFI_RESET);
+  CWifi::getInstance().initWithLCD(Clcd::getInstance(), PIN_WIFI_RESET);      //Init WIFI
 
-  this->m_pWifi = &CWifi::getInstance();
-  this->m_pWebServer = &this->m_pWifi->getWebserver();
+  this->m_pWifi       = &CWifi::getInstance();                                //Init Webserver              
+  this->m_pWebServer  = &this->m_pWifi->getWebserver();                       //Init Webserver
 
-  this->m_pNtpUDP = new WiFiUDP();
-  this->m_pTimeClient = new NTPClient(*m_pNtpUDP, "europe.pool.ntp.org", 3600, 60000);
+  this->m_pNtpUDP     = new WiFiUDP();                                                  // Init NTP 
+  this->m_pTimeClient = new NTPClient(*m_pNtpUDP, "europe.pool.ntp.org", 3600, 60000);  // Init NTP 
 #ifdef debug
   Serial.println("WIFI setup end...");
 #endif
@@ -88,15 +90,15 @@ void CWaterPumpControl::init()
 
   ///INIT TIME VALUES
   //
-  m_pTimeClient->begin();
-  //ChangeToSummerTime
-  m_pTimeClient->setTimeOffset(7200);
+  m_pTimeClient->begin();               // Start NTP
+  //ChangeToSummerTime                  //
+  m_pTimeClient->setTimeOffset(7200);   // Change Time of NTP
 
-  this->m_pLastPumpRunTimeRingBuffer = new CTimeWaterPumpRingBuffer();
-  this->m_pLastPumpStopTimeRingBuffer = new CTimeWaterPumpRingBuffer();
+  this->m_pLastPumpRunTimeRingBuffer  = new CTimeWaterPumpRingBuffer();   //Init Ringbuffer for saveing data of pump
+  this->m_pLastPumpStopTimeRingBuffer = new CTimeWaterPumpRingBuffer();   //Init Ringbuffer for saveing data of pump
 
-  this->m_pLastPumpRunTimeRingBuffer->setBufferSize(this->S_SIZEOFTIMESSAVED);
-  this->m_pLastPumpStopTimeRingBuffer->setBufferSize(this->S_SIZEOFTIMESSAVED);
+  this->m_pLastPumpRunTimeRingBuffer->setBufferSize(this->S_SIZEOFTIMESSAVED);    //Set Buffersize of Ringbuffer
+  this->m_pLastPumpStopTimeRingBuffer->setBufferSize(this->S_SIZEOFTIMESSAVED);   //Set Buffersize of Ringbuffer
 
 #ifdef debug
   Serial.println("Memory reserved for Ringbuffer");
@@ -114,8 +116,8 @@ void CWaterPumpControl::init()
   Serial.println("Dummy Values added to ringbuffers");
 #endif
 
-  this->m_CurrentRunCounter = 0; //Increase every time when is saved ... < 3 set to 0
-  this->m_CurrentStopCounter = 0;
+  this->m_CurrentRunCounter   = 0; //Increase every time when is saved ... < 3 set to 0
+  this->m_CurrentStopCounter  = 0;
   //
   ////End INIT TIME VALUES
 
@@ -128,9 +130,9 @@ void CWaterPumpControl::init()
 #endif
 
   //Test Relays
-  String a("Relais test");
-  String b("running");
-  String c("end");
+  String a("Relais test");                                      
+  String b("running");                                        
+  String c("end");                                            
   this->m_pLcd->setLine(&a, 0);
   this->m_pLcd->setLine(&b, 1);
   this->m_pWaterpump->runTestRelaysModuleWithDelayOf(200);
@@ -143,6 +145,9 @@ void CWaterPumpControl::init()
 #ifdef debug
   Serial.println("Interrupttimer to Buttons attached ...");
 #endif
+
+
+  this->attachTimerToReadFountainFilled();
 
   // String line1("IPAddress is:");
   // String line2(this->m_pWifi->getIpAddress());
@@ -194,7 +199,18 @@ void CWaterPumpControl::saveRunTime(CTimeWaterPump *_ptime)
   }
 }
 
+
+
+CTimeWaterPump* CWaterPumpControl::getRestartTimeWithDelay()
+{
+  return this->m_restartTimeWithDelay;
+}
+
 //Main Method
+/**
+ * @brief Looping Method run while 1
+ * 
+ */
 void CWaterPumpControl::run()
 {
 
@@ -202,9 +218,12 @@ void CWaterPumpControl::run()
                         //HTTP Requests
                         //DNS for AP
 
+//Check is not in AP mode 
   if (!this->m_pWifi->isInAPMode())
   {
 
+    //Run Methods if mode changed ...
+    //
     if (this->m_ModeHasChanged)
     {
       switch (this->m_pWaterpump->getWaterPumpMode())
@@ -238,9 +257,9 @@ void CWaterPumpControl::run()
         if (this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpRunning())
         {
 
-          // #ifdef debug
-          // Serial.println("Fountain full + Pump running....");
-          // #endif
+          #ifdef debug
+          Serial.println("Fountain full + Pump running....");
+          #endif
 
           CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
         }
@@ -248,17 +267,64 @@ void CWaterPumpControl::run()
         else if (this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
         {
 
-          // #ifdef debug
-          // Serial.println("Fountain full + Pump stopped....");
-          // #endif
+          #ifdef debug
+          Serial.println("Fountain full + Pump stopped....");
+          #endif
 
-          this->m_pWaterpump->TurnOnWaterPump();
+          int StartDelayInMinues = CWaterPumpControl::getInstance().getWaterPump()->getTurnOnDelay();
+          if (StartDelayInMinues > 0 &&  this->m_restartTimeWithDelay == nullptr)
+          {
 
-          String msg("Turn On  Waterpump");
-          this->m_pLcd->showTurnLoadingRoutine(50, "#", true, &msg);
-          this->saveRunTime(this->getCurrentCWaterPumpControlTime());
 
-          CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
+            this->m_restartTimeWithDelay = new CTimeWaterPump(this->m_currentTime);
+            this->m_restartTimeWithDelay->addMinutes(StartDelayInMinues);
+
+
+            String msg("Brunnen voll");
+            this->m_pLcd->showTurnLoadingRoutine(50, "+", true, &msg);
+
+
+            String msg2;
+            msg2 =  *(this->m_restartTimeWithDelay->getAsString(&msg2));
+
+            msg = "Start bei";
+            this->m_pLcd->setLine(&msg, 0);
+            this->m_pLcd->setLine(&msg2,1);
+          }
+          else if(StartDelayInMinues > 0 &&  this->m_restartTimeWithDelay != nullptr)
+          {
+            this->getCurrentCWaterPumpControlTime();
+            Serial.print( this->m_currentTime.getMinute());
+            Serial.print( this->m_restartTimeWithDelay->getMinute());
+            Serial.print("-");
+            if (this->m_currentTime.getHour() == this->m_restartTimeWithDelay->getHour() && this->m_currentTime.getMinute() == this->m_restartTimeWithDelay->getMinute())
+            {
+              this->m_pWaterpump->TurnOnWaterPump();
+              String msg("Turn On  Waterpump");
+              this->m_pLcd->showTurnLoadingRoutine(50, "#", true, &msg);
+              this->saveRunTime(this->getCurrentCWaterPumpControlTime());
+              CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
+
+              delete this->m_restartTimeWithDelay;
+              this->m_restartTimeWithDelay = nullptr;
+              
+            }
+          }
+          else
+          {
+            this->m_pWaterpump->TurnOnWaterPump();
+            String msg("Turn On  Waterpump");
+            this->m_pLcd->showTurnLoadingRoutine(50, "#", true, &msg);
+            this->saveRunTime(this->getCurrentCWaterPumpControlTime());
+            CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
+
+          }
+          
+
+
+
+
+
 
           // TODO IMPLEMENNT STARTDELAY
           //No WaterpumpDelay is set
@@ -296,7 +362,11 @@ void CWaterPumpControl::run()
         //Fountain empty and pump running
         else if (!this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpRunning())
         {
-          // Serial.println("Fountain empty + Pump running....");
+
+          #ifdef debug
+          Serial.println("Fountain empty + Pump running....");
+          #endif
+
           this->m_pWaterpump->TurnOffWaterPump();
           String msg("Turn Off  Waterpump");
           this->m_pLcd->showTurnLoadingRoutine(50, "#", false, &msg);
@@ -309,7 +379,16 @@ void CWaterPumpControl::run()
         //Foundtain empty and pump Stopped
         else if (!this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
         {
-          // Serial.println("Fountain empty + Pump stopped....");
+          #ifdef debug
+          Serial.println("Fountain empty + Pump stopped....");
+          #endif
+          
+          if(this->m_restartTimeWithDelay != nullptr)
+          {
+            delete this->m_restartTimeWithDelay ;
+            this->m_restartTimeWithDelay = nullptr ;
+          }
+
           String time;
           this->m_pLcd->showWaterIsEmpty(this->getCurrentCWaterPumpControlTime()->getAsString(&time));
         }
@@ -317,10 +396,14 @@ void CWaterPumpControl::run()
       case MANUELON:
         this->m_pWaterpump->TurnOnWaterPump();
         this->m_pLcd->showManualON();
+        delete this->m_restartTimeWithDelay;
+        this->m_restartTimeWithDelay = nullptr;
         break;
       case MANUELOFF:
         this->m_pWaterpump->TurnOffWaterPump();
         this->m_pLcd->showManualOFF();
+        delete this->m_restartTimeWithDelay;
+        this->m_restartTimeWithDelay = nullptr;
         break;
       default:
         break;
@@ -382,6 +465,11 @@ CTimeWaterPump *CWaterPumpControl::getCurrentCWaterPumpControlTime()
   return &this->m_currentTime;
 }
 
+
+/**
+ * @brief Read input Buttons and Change the mode 
+ * 
+ */
 void CWaterPumpControl::readInputButtons()
 {
 
@@ -489,6 +577,7 @@ void CWaterPumpControl::changeModeToAuto()
   //   this->m_pLcd->setLine(&time, 1);
 
   // }
+ 
 }
 void CWaterPumpControl::changeModeToManuelOn()
 {
@@ -568,12 +657,20 @@ bool CWaterPumpControl::isWaterInFountain()
 
 void CWaterPumpControl::readIsWaterInFountain()
 {
+
+int value = analogRead(PIN_WATERLIMIT_INPUT);
+#ifdef debug 
+Serial.print("INPUT OF PIN_WATERLIMIT_INPUT IS:");
+Serial.println(value);
+#endif
+
   if (analogRead(PIN_WATERLIMIT_INPUT) > 200)
   {
     S_WaterlimitCounter++;
     if (S_WaterlimitCounter >= S_ACTIVATELIMITBORDER)
     {
 #ifdef debug
+
       Serial.print("isWaterInFountain: ");
       Serial.println("true");
 #endif
@@ -628,15 +725,21 @@ CWaterPump *CWaterPumpControl::getWaterPump()
 
 void CWaterPumpControl::attachTimerToInputButtons()
 {
-  CWaterPumpControl::getInstance().getCallTicker()->attach_ms(100, CWaterPumpControl::readInputButtons);
+  CWaterPumpControl::getInstance().getCallTickerInputButtons()->attach_ms(100, CWaterPumpControl::readInputButtons);
 }
 
-Ticker *CWaterPumpControl::getCallTicker()
+Ticker *CWaterPumpControl::getCallTickerInputButtons()
 {
-  return &this->m_CallTicker;
+  return &this->m_CallTickerInputButtons;
 }
+
+Ticker *CWaterPumpControl::getCallTickeReadFountainFilled()
+{
+  return &this->m_CallTickerFountainFilled;
+}
+
 
 void CWaterPumpControl::attachTimerToReadFountainFilled()
 {
-  CWaterPumpControl::getInstance().getCallTicker()->attach_ms(100, CWaterPumpControl::readIsWaterInFountain );
+  CWaterPumpControl::getInstance().getCallTickeReadFountainFilled()->attach_ms(100, CWaterPumpControl::readIsWaterInFountain );
 }

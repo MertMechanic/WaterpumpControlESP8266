@@ -22,11 +22,8 @@
 //Basic Emergency Routine
 Ticker emergencyTicker;
 int watchdogCount = 0;
-//Emergency Routine Setup END
-/**
- * @brief 
- * 
- */
+
+
 void ISREmergencyRestartWatchDog()
 {
   watchdogCount++;
@@ -38,6 +35,10 @@ void ISREmergencyRestartWatchDog()
   
 }
 
+/**
+ * @brief Arduino Setup Run before loop
+ * 
+ */
 void setup()
 {
   //EmergencyTicker - attach
