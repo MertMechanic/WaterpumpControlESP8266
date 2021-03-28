@@ -5,17 +5,18 @@
 #include "Defines.h"
 #include "Ticker.h"
 #include "CTimeWaterPumpRingBuffer.h"
+#include "CTemperatureSensor.h"
+class NTPClient        ;
+class ESP8266WebServer ;
+class Clcd             ;
+class CWaterPump       ;
+class CWifi            ;
+class WiFiUDP          ;
+class CWebServer       ;
 
-class NTPClient       ;
-class ESP8266WebServer;
-class Clcd            ;
-class CWaterPump      ;
-class CWifi           ;
-class WiFiUDP         ;
-class CWebServer      ;
 
 static bool S_FountainIsFilled;
-static int S_WaterlimitCounter;                        //Counts the activation of the WaterLimitSwitch
+static int  S_WaterlimitCounter;                        //Counts the activation of the WaterLimitSwitch
 
 class CWaterPumpControl
 {
@@ -59,6 +60,8 @@ public:
     CTimeWaterPump *getCurrentCWaterPumpControlTime();
 
 
+    
+
     static const int S_SIZEOFTIMESSAVED = 3;
 
     static void readInputButtons();
@@ -67,20 +70,25 @@ public:
     Ticker* getCallTickerInputButtons();
     Ticker* getCallTickeReadFountainFilled();
     Ticker* getLCDBacklightTicker();
+    Ticker* getTemperatureTicker();
 
     static void deattachTimerToBackLightTurnoff();
 
     static void readIsWaterInFountain();
+    static void readTemperatures();
 
     CTimeWaterPump *getRestartTimeWithDelay();
 
+    TemperatureSensor* getTemperatureSensors();
+
 private:
-    NTPClient   *m_pTimeClient;
-    Clcd        *m_pLcd;
-    CWaterPump  *m_pWaterpump;
-    CWifi       *m_pWifi;
-    WiFiUDP     *m_pNtpUDP;
-    CWebServer  *m_pWebServer;
+    NTPClient         *m_pTimeClient;
+    Clcd              *m_pLcd;
+    CWaterPump        *m_pWaterpump;
+    CWifi             *m_pWifi;
+    WiFiUDP           *m_pNtpUDP;
+    CWebServer        *m_pWebServer;  
+    TemperatureSensor  m_TemperatureSensors;
 
     bool m_ModeHasChanged;
     int  m_DisplayFlag;
@@ -88,12 +96,13 @@ private:
     CTimeWaterPump* m_restartTimeWithDelay;  //A Date of Turning on 
     CTimeWaterPump m_currentTime;
 
-
-    static const int S_ACTIVATELIMITBORDER = 4;
+    static const int S_ACTIVATELIMITBORDER      = 4;
+    static const int S_COUNTOFTEMPERAURESENSORS = 2;
 
 
     Ticker m_CallTickerInputButtons;
     Ticker m_CallTickerFountainFilled;
+    Ticker m_CallTickerTemperatureMessure;
 
 
     void InitSerialSetup();
@@ -125,5 +134,7 @@ private:
     int m_CurrentRunCounter;
     static void attachTimerToInputButtons();
     static void attachTimerToReadFountainFilled();
+    static void attachTimerToReadTemperature();
 
+    bool m_IsTimerTemperatureAndWaterLimitAttached;
 };

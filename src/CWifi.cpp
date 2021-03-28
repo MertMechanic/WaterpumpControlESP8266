@@ -129,22 +129,24 @@ void CWifi::wifiConnect()
                     IPAddress GatewayIP(STATICGATEWAY);
                     IPAddress Netmask(STATICSUBNETMASK);
 
-                    if (WiFi.config(StaticIP, GatewayIP, Netmask, GatewayIP, GatewayIP) == false) 
-                {
-                    String cfglcd1("Configuration");
-                    String cfglcd2("failed");
-                    Serial.println("Configuration failed.");
-                    this->m_pLcd->setDisplayText(&cfglcd1, &cfglcd2);
-                }
+                    if (WiFi.config(StaticIP, GatewayIP, Netmask, GatewayIP, GatewayIP) == false)
+                    {
+                        String cfglcd1("Configuration");
+                        String cfglcd2("failed");
+                        Serial.println("Configuration failed.");
+                        this->m_pLcd->setDisplayText(&cfglcd1, &cfglcd2);
+                    }
                 #endif
 
-
+  
+                Serial.println(*this->m_pSSID);
+                Serial.println(*this->m_pPassword);
 
                 WiFi.mode(WIFI_STA);
                 WiFi.begin(_ssid, _pass);
                 this->m_isInAPMode = false;
 
-                unsigned long startTime = millis();
+
                 while (WiFi.status() != WL_CONNECTED)
                 {
                     delay(500);
@@ -269,7 +271,9 @@ void CWifi::run()
     }
     
     CWebServer::getInstance().getESP8266WebServer()->handleClient(); //Method for http request handleing
+
     CWifi::getInstance().handleResetButton();                        //Method for observing WIFI reset button 
+
 }
 
 //Listen to the Reset Button ... Interrupt everything and count 5 seconds 
@@ -281,7 +285,7 @@ bool CWifi::handleResetButton()
     int count = 5;
     bool buttonPressed = false;
     //Count 5 times is button pressed - if yes - reset settings 
-    for (size_t i = 0; i < count; i++)
+    for (int i = 0; i < count; i++)
     {
         if (digitalRead(this->getResetPin()) == HIGH)
         {

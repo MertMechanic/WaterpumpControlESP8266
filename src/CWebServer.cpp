@@ -8,6 +8,7 @@
 #include "CWaterPumpControl.h"
 #include "CWaterPump.h"
 #include "Clcd.h"
+#include "CTemperatureSensor.h"
 //
 //GLOBAL FUNCTIONS FOR WEBSERVER HTTP REQUESTS
 //
@@ -19,7 +20,7 @@ JsonObject &getJsonObjectFromResponse()
     String data = CWebServer::getInstance().getESP8266WebServer()->arg("plain");
 
     // Parsing
-    const size_t bufferSize = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(8) + 370;
+    const size_t bufferSize = JSON_OBJECT_SIZE(48) + 512;
     DynamicJsonBuffer jsonBuffer(bufferSize);
     JsonObject &root = jsonBuffer.parseObject(data);
 
@@ -38,9 +39,9 @@ void handleFetchDataForDashBoard()
     Serial.println("fetchData... Dashboard");
     
     int StartDelay = CWaterPumpControl::getInstance().getWaterPump()->getTurnOnDelay();
-
     String waterPumpModeStr;
 
+    //getting current Pumpmode and generate a String
     switch (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode())
     {
     case AUTO:
@@ -59,31 +60,16 @@ void handleFetchDataForDashBoard()
 
     // create an object
     JsonObject &jsonObject = jsonBuffer.createObject();
-    jsonObject["startdelay"] = String(StartDelay);
-    jsonObject["mode"] = waterPumpModeStr;
-
-    // CTimeWaterPump reverseArray[CWaterPumpControl::S_SIZEOFTIMESSAVED];
-  
-
-
     String tmp;
-    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(0)->getAsString(&tmp);
-    jsonObject["runtime1"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(1)->getAsString(&tmp);
-    jsonObject["runtime2"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(2)->getAsString(&tmp);
-    
-
-    jsonObject["stoptime0"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(0)->getAsString(&tmp);
-    jsonObject["stoptime1"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(1)->getAsString(&tmp);
-    jsonObject["stoptime2"]    = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(2)->getAsString(&tmp);
-
-
 
 
     jsonObject["status"] = CWaterPumpControl::getInstance().isWaterInFountain();
 
-
-    CTimeWaterPump *pTime = CWaterPumpControl::getInstance().getRestartTimeWithDelay();
+    jsonObject["temperature1"]    =  *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(0, &tmp);
+    jsonObject["temperature2"]    =  *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(1, &tmp);
     
+
+    CTimeWaterPump* pTime = CWaterPumpControl::getInstance().getRestartTimeWithDelay();
     if (pTime != nullptr)
     {
          jsonObject["restarttimestr"] = *pTime->getAsString(&tmp);
@@ -92,24 +78,25 @@ void handleFetchDataForDashBoard()
     {
         jsonObject["restarttimestr"] = "-";
     }
+
+    jsonObject["startdelay"]  = String(StartDelay);
+
+
+    jsonObject["runtime0"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(0)->getAsString(&tmp);
+    jsonObject["runtime1"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(1)->getAsString(&tmp);
+    jsonObject["runtime2"]    = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(2)->getAsString(&tmp);
     
-//TODO
-    // if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpStopped())
-    // {
-    //     jsonObject["restarttime"] = *CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tmp);
-    // }
-    // else if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr && CWaterPumpControl::getInstance().getWaterPump()->isWaterPumpRunning())
-    // {
-    //     jsonObject["restarttime"] = "is running";
-    // }
-    // else
-    // {
-    //     jsonObject["restarttime"] = "not defined";
-    // }
+    jsonObject["stoptime0"]   = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(0)->getAsString(&tmp);
+    jsonObject["stoptime1"]   = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(1)->getAsString(&tmp);
+    jsonObject["stoptime2"]   = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(2)->getAsString(&tmp);
+
+    jsonObject["mode"]        =   waterPumpModeStr;
 
     String output;
     jsonObject.printTo(output);
-
+#ifdef Debug
+    Serial.println(output);
+#endif
     CWebServer::getInstance().getESP8266WebServer()->send(200, "text/plain", output);
 
 }
@@ -134,7 +121,9 @@ void handleAPModeSettingsUpdate()
     configFile.close();
 
     CWebServer::getInstance().getESP8266WebServer()->send(200, "application/json", "{\"status\":\"ok\"}");
+    #ifdef debug 
     Serial.println("send status ok");
+    #endif
     delay(500);
 
 
@@ -146,7 +135,7 @@ void handleAPModeSettingsUpdate()
 void handleRoot()
 {
     //Configure your rootpage here ....
-    Serial.println("try to send servus moiiiin...");
+    
     CWebServer &Server = CWebServer::getInstance();
     Server.getESP8266WebServer()->send_P(200, "text/html", g_dashboard);
 }

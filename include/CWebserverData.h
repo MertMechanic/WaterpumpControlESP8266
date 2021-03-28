@@ -1,7 +1,6 @@
 
 #pragma once
 
-
 static constexpr char g_dashboard[] PROGMEM = R"=====(
 <!DOCTYPE html>
 <html lang="en">
@@ -10,8 +9,26 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/4.4.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+
+    <style>
+    .hide{
+        display: none;
+    }
+    .show{
+        display: block;
+    }
+
+    .statusbox{
+        border: 2px solid black;
+        border-radius: 30px;
+        box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.9), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    }
+
+    </style>
+
 </head>
 
 <body>
@@ -28,6 +45,16 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 </tr>
                 </thead>
                 <tbody>
+                                <tr>
+                    <td>Innen Temperatur:</td>
+                    <td><div id="temperature1" class=".show">___</div></td>
+
+                </tr>
+                                <tr>
+                    <td>Außen Temperatur:</td>
+                    <td><div id="temperature2" class=".show">___</div></td>
+
+                </tr>
                 <tr>
                     <td>Zeit zum Wiedereinschalten:</td>
                     <td><div id="restarttimestr">___</div></td>
@@ -41,7 +68,7 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
 
         </div>
 
-        <h2 class="status col-sm-12 text-center" id="pumpstatus" style="font-size: 4rem;margin-bottom: 2rem;">
+        <h2 class="status col-sm-12 text-center statusbox" id="pumpstatus" style="font-size: 4rem;margin-bottom: 2rem;">
             status
         </h2>
 
@@ -107,6 +134,9 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
 </body>
 
 <script>
+
+    var statuspump = false;
+
     function sendDatastartdelayinminutes() {
         // console.log("sendDataInputDelay")
 
@@ -170,7 +200,7 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
             if (this.readyState == 4 && this.status == 200)
             {
                 //TODO RESPONSE IS JSON NEED TO  PARSE HERE !!!!
-                // console.log(this.responseText);
+                console.log(this.responseText);
 
                 var object = JSON.parse(this.responseText);
 
@@ -186,6 +216,10 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 var stoptime2str =  object.stoptime2;
 
                 var restarttimestr =  object.restarttimestr;
+
+
+                var temperature1 = object.temperature1;
+                var temperature2 = object.temperature2;
 
                 switch(mode) {
                     case "AUTO":
@@ -220,16 +254,79 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
 
                 document.getElementById("restarttimestr").innerText = restarttimestr;
 
+                document.getElementById("temperature1").innerText = temperature1;
+                document.getElementById("temperature2").innerText = temperature2;
+//tmp1
+                document.getElementById("temperature1").classList.remove("animate__animated");
+                document.getElementById("temperature1").classList.remove("animate__pulse");
+                document.getElementById("temperature1").classList.remove("show");
+                document.getElementById("temperature1").classList.add("hide");
+
+                document.getElementById("temperature1").classList.offsetWidth;
+                setTimeout(function(){
+                document.getElementById("temperature1").classList.add("animate__animated") } ,1);
+                setTimeout(function(){
+                document.getElementById("temperature1").classList.add("animate__pulse") } ,1);
+                setTimeout(function(){
+                document.getElementById("temperature1").classList.remove("hide") } ,1);
+                setTimeout(function(){
+                document.getElementById("temperature1").classList.add("show") } ,1);
+              
+//tmp2
+                document.getElementById("temperature2").classList.remove("animate__animated");
+                document.getElementById("temperature2").classList.remove("animate__pulse");
+                document.getElementById("temperature2").classList.remove("show");
+                document.getElementById("temperature2").classList.add("hide");
+
+                document.getElementById("temperature2").classList.offsetWidth;
+                setTimeout(function(){
+                document.getElementById("temperature2").classList.add("animate__animated") } ,1);
+                setTimeout(function(){
+                document.getElementById("temperature2").classList.add("animate__pulse") } ,1);
+                setTimeout(function(){
+                document.getElementById("temperature2").classList.remove("hide") } ,1);
+                setTimeout(function(){
+                document.getElementById("temperature2").classList.add("show") } ,100);
+
+
                 var status = object.status;
-                if (status)
+
+
+                if(status != statuspump)
+                {
+                statuspump = status;
+
+                document.getElementById("pumpstatus").classList.remove("animate__animated");
+                document.getElementById("pumpstatus").classList.remove("animate__flash");
+
+                setTimeout(function(){
+                document.getElementById("pumpstatus").classList.remove("hide") } ,1);
+                setTimeout(function(){
+                document.getElementById("pumpstatus").classList.add("show") } ,1);
+                setTimeout(function(){
+                document.getElementById("pumpstatus").classList.add("animate__animated") } ,1);
+                setTimeout(function(){
+                document.getElementById("pumpstatus").classList.add("animate__flash") } ,100);
+
+                }
+                console.log("status:" + status);
+                console.log("pumpstatus:" + pumpstatus);
+                if (status == true)
                 {
 
                     document.getElementById("pumpstatus").innerText = "(◉⩊◉)";
+                    document.getElementById("pumpstatus").classList.remove("bg-danger");
+                    document.getElementById("pumpstatus").classList.add("bg-success");
                 }
                 else
                 {
+
                     document.getElementById("pumpstatus").innerText ="(◉ ︹ ◉)";
+                    document.getElementById("pumpstatus").classList.remove("bg-success");
+                    document.getElementById("pumpstatus").classList.add("bg-danger");
+                
                 }
+               
 
             }
         };

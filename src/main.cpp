@@ -35,6 +35,7 @@ void ISREmergencyRestartWatchDog()
   
 }
 
+
 /**
  * @brief Arduino Setup Run before loop
  * 
@@ -46,7 +47,7 @@ void setup()
   //after 5 seconds - it will restart the esp
 
   CWaterPumpControl::getInstance().init();
-  emergencyTicker.attach(1,ISREmergencyRestartWatchDog);
+  // emergencyTicker.attach(1,ISREmergencyRestartWatchDog);
 }
 
 void loop()

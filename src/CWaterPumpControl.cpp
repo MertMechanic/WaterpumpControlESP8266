@@ -14,8 +14,11 @@
 #include "ESPAsyncWebServer.h"
 #include "C2RelayModule.h"
 
+#include "CTemperatureSensor.h"
+
 #define debug 1
 
+//#define noWIFIREST 1
 
 CWaterPumpControl::CWaterPumpControl()
 {
@@ -56,6 +59,8 @@ void CWaterPumpControl::init()
   pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP); // Input Pins Button MIDDLE
   pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);  // Input Pins Button RIGHT
 
+
+
 ///INIT SERIAL
 #ifdef debug
   Serial.println("Init Serial Setup");
@@ -79,6 +84,9 @@ void CWaterPumpControl::init()
 
   this->m_pWifi       = &CWifi::getInstance();                                //Init Webserver              
   this->m_pWebServer  = &this->m_pWifi->getWebserver();                       //Init Webserver
+
+
+
 
   this->m_pNtpUDP     = new WiFiUDP();                                                  // Init NTP 
   this->m_pTimeClient = new NTPClient(*m_pNtpUDP, "europe.pool.ntp.org", 3600, 60000);  // Init NTP 
@@ -141,13 +149,20 @@ void CWaterPumpControl::init()
   S_WaterlimitCounter = 0;
   S_FountainIsFilled = false;
 
+  m_IsTimerTemperatureAndWaterLimitAttached = false;
+
   this->attachTimerToInputButtons();
 #ifdef debug
   Serial.println("Interrupttimer to Buttons attached ...");
 #endif
 
+    
+    // pinMode(PIN_TEMPERATURE_MESSURE, INPUT);  //Temperature MEssure
+    m_TemperatureSensors.init(CWaterPumpControl::S_COUNTOFTEMPERAURESENSORS, PIN_TEMPERATURE_MESSURE); 
 
-  this->attachTimerToReadFountainFilled();
+#ifdef debug
+  Serial.println("Tempinit Done ...");
+#endif
 
   // String line1("IPAddress is:");
   // String line2(this->m_pWifi->getIpAddress());
@@ -221,6 +236,16 @@ void CWaterPumpControl::run()
 //Check is not in AP mode 
   if (!this->m_pWifi->isInAPMode())
   {
+
+    this->m_TemperatureSensors.updateTemperature();
+
+    if(!m_IsTimerTemperatureAndWaterLimitAttached)
+    {
+      attachTimerToReadFountainFilled();
+
+      attachTimerToReadTemperature();
+      this->m_IsTimerTemperatureAndWaterLimitAttached = true;
+    }
 
     //Run Methods if mode changed ...
     //
@@ -420,6 +445,7 @@ void CWaterPumpControl::run()
     String a("--- AP-Mode ----");
     String b("--  !Active! --");
     this->m_pLcd->setDisplayText(&a, &b);
+    
   }
 }
 
@@ -684,6 +710,17 @@ Serial.println(value);
   }
 }
 
+
+
+
+
+void CWaterPumpControl::readTemperatures()
+{
+  Serial.println("t");
+  // CWaterPumpControl::getInstance().m_TemperatureSensors.updateTemperature();
+}
+
+
 void CWaterPumpControl::assignWaterPumpMode(WaterPumpModeType _mode)
 {
   if (this->m_pWaterpump->getWaterPumpMode() != _mode)
@@ -698,30 +735,6 @@ CWaterPump *CWaterPumpControl::getWaterPump()
   return this->m_pWaterpump;
 }
 
-//TODO
-// void CWaterPumpControl::setStartTimeWithDelay()
-// {
-//   CTimeWaterPump LastStopTime;
-//   LastStopTime = *this->getStopRunTimeReversed(&LastStopTime);
-
-//   if (this->m_restartTimeWithDelay == nullptr)
-//   {
-//     this->m_restartTimeWithDelay = new CTimeWaterPump(LastStopTime);
-//   }
-//   else
-//   {
-//     *this->m_restartTimeWithDelay = LastStopTime;
-//   }
-
-//   int TurnOnDelayInMinutes = this->m_pWaterpump->getTurnOnDelay();
-
-//   this->m_restartTimeWithDelay->addMinutes(TurnOnDelayInMinutes);
-// }
-
-// CTimeWaterPump *CWaterPumpControl::getRestartTimeWithDelay()
-// {
-//   return this->m_restartTimeWithDelay;
-// }
 
 void CWaterPumpControl::attachTimerToInputButtons()
 {
@@ -738,8 +751,24 @@ Ticker *CWaterPumpControl::getCallTickeReadFountainFilled()
   return &this->m_CallTickerFountainFilled;
 }
 
+Ticker* CWaterPumpControl::getTemperatureTicker()
+{
+   return &this->m_CallTickerTemperatureMessure;
+}
+
 
 void CWaterPumpControl::attachTimerToReadFountainFilled()
 {
   CWaterPumpControl::getInstance().getCallTickeReadFountainFilled()->attach_ms(100, CWaterPumpControl::readIsWaterInFountain );
+}
+
+
+void CWaterPumpControl::attachTimerToReadTemperature()
+{
+  CWaterPumpControl::getInstance().getTemperatureTicker()->attach_ms(200,  CWaterPumpControl::readTemperatures);
+}
+
+TemperatureSensor* CWaterPumpControl::getTemperatureSensors()
+{
+  return &this->m_TemperatureSensors;
 }
