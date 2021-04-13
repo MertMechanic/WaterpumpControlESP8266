@@ -6,8 +6,9 @@
 #include "Ticker.h"
 #include "CTimeWaterPumpRingBuffer.h"
 #include "CTemperatureSensor.h"
+#include "CUltraSonicSensor.h"
 class NTPClient        ;
-class ESP8266WebServer ;
+class AsyncWebserver   ;
 class Clcd             ;
 class CWaterPump       ;
 class CWifi            ;
@@ -15,8 +16,9 @@ class WiFiUDP          ;
 class CWebServer       ;
 
 
-static bool S_FountainIsFilled;
-static int  S_WaterlimitCounter;                        //Counts the activation of the WaterLimitSwitch
+
+
+enum e_FountainStatus { FILLED, EMPTY, OVERFILLED, OVEREMPTY};
 
 class CWaterPumpControl
 {
@@ -40,6 +42,7 @@ private:
     //Stingleton END
 
 public:
+
 
 
     //Main Method of Waterpumpcontrol
@@ -75,11 +78,21 @@ public:
     static void deattachTimerToBackLightTurnoff();
 
     static void readIsWaterInFountain();
-    static void readTemperatures();
 
     CTimeWaterPump *getRestartTimeWithDelay();
 
     TemperatureSensor* getTemperatureSensors();
+    CUltraSonicSensor* getUltraSonicSensor();    
+
+    static int  getWaterLimitMessure();
+    static int  getWaterLimitMaxBorder();
+    static int  getWaterLimitMinBorder();
+    static void setWaterLimitMax(int _max);
+    static void setWaterLimitMin(int _min);
+
+    e_FountainStatus getFountainStatus();
+
+
 
 private:
     NTPClient         *m_pTimeClient;
@@ -89,6 +102,7 @@ private:
     WiFiUDP           *m_pNtpUDP;
     CWebServer        *m_pWebServer;  
     TemperatureSensor  m_TemperatureSensors;
+    CUltraSonicSensor  m_UltraSonicSensor;
 
     bool m_ModeHasChanged;
     int  m_DisplayFlag;
@@ -114,7 +128,6 @@ private:
     void saveRunTime(CTimeWaterPump *_pTime);
 
 
-
     CTimeWaterPumpRingBuffer* m_pLastPumpRunTimeRingBuffer;
     CTimeWaterPumpRingBuffer* m_pLastPumpStopTimeRingBuffer;
     
@@ -134,7 +147,14 @@ private:
     int m_CurrentRunCounter;
     static void attachTimerToInputButtons();
     static void attachTimerToReadFountainFilled();
-    static void attachTimerToReadTemperature();
 
     bool m_IsTimerTemperatureAndWaterLimitAttached;
+
+
+    static e_FountainStatus S_FountainStatus;
+    
+    static int S_WaterLimitMessure;
+    static int S_WaterLimitEmptyBorder;
+    static int S_WaterLimitFullBorder;
+
 };

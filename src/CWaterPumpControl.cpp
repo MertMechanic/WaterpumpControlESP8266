@@ -5,7 +5,7 @@
 #include "Arduino.h"
 #include "Defines.h"
 #include "CWaterPumpControl.h"
-
+#include "CFileSystem.h"
 #include "CWaterPump.h"
 #include "CWifi.h"
 #include "Clcd.h"
@@ -16,9 +16,15 @@
 
 #include "CTemperatureSensor.h"
 
-#define debug 1
+// #define debug 1
 
 //#define noWIFIREST 1
+
+
+int  CWaterPumpControl::S_WaterLimitMessure;
+int  CWaterPumpControl::S_WaterLimitEmptyBorder;
+int  CWaterPumpControl::S_WaterLimitFullBorder;
+e_FountainStatus CWaterPumpControl::S_FountainStatus;
 
 CWaterPumpControl::CWaterPumpControl()
 {
@@ -48,10 +54,10 @@ void CWaterPumpControl::init()
   //NOTE - The Normal 5V Pin can not be used as switich pin because
   //       there is a problem when 5V is connected to input pin in
   //       boot sequence
-  //
-  pinMode   (PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT);    // Waterlimit Switch
-  digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH);    // Waterlimit Pin HIGH
-  pinMode   (PIN_WATERLIMIT_INPUT, INPUT_PULLUP);    // Watrelimit Input Pin
+  // //
+  // pinMode   (PIN_WATERLIMIT_OUTPUT_HIGH, OUTPUT);    // Waterlimit Switch
+  // digitalWrite(PIN_WATERLIMIT_OUTPUT_HIGH, HIGH);    // Waterlimit Pin HIGH
+  // pinMode   (PIN_WATERLIMIT_INPUT, INPUT_PULLUP);    // Watrelimit Input Pin
 
   pinMode(PIN_RELAIS_0, OUTPUT);            // Relais 0
   pinMode(PIN_RELAIS_1, OUTPUT);            // Relais 1
@@ -59,7 +65,7 @@ void CWaterPumpControl::init()
   pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP); // Input Pins Button MIDDLE
   pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);  // Input Pins Button RIGHT
 
-
+  this->m_UltraSonicSensor.initUltraSonicSensorPins(PIN_ULTRASONIC_TRIGGER, PIN_ULTRASONIC_ECHO);
 
 ///INIT SERIAL
 #ifdef debug
@@ -146,8 +152,8 @@ void CWaterPumpControl::init()
   this->m_pWaterpump->runTestRelaysModuleWithDelayOf(200);
   this->m_pLcd->setLine(&c, 1);
 
-  S_WaterlimitCounter = 0;
-  S_FountainIsFilled = false;
+
+  S_FountainStatus = EMPTY;
 
   m_IsTimerTemperatureAndWaterLimitAttached = false;
 
@@ -164,16 +170,35 @@ void CWaterPumpControl::init()
   Serial.println("Tempinit Done ...");
 #endif
 
-  // String line1("IPAddress is:");
-  // String line2(this->m_pWifi->getIpAddress());
-  // this->m_pLcd->setDisplayText(&line1, &line2);
 
-  // this->m_ModeHasChanged = true;
+// Reading Values from files
+//
+//
+
+  String WaterLimitMax;
+  String WaterLimitMin;
+  String StartDelay   ;
+
+  if (CFileSystem::getInstance().readFile("/watermax.txt", &WaterLimitMax))
+  {
+    this->S_WaterLimitEmptyBorder = WaterLimitMax.toInt();
+  }
+
+  if (CFileSystem::getInstance().readFile("/watermin.txt", &WaterLimitMin))
+  {
+    this->S_WaterLimitFullBorder = WaterLimitMin.toInt();
+  }
+
+  if (CFileSystem::getInstance().readFile("/startdelay.txt", &StartDelay))
+  {
+    this->setTurnOnDelay(StartDelay.toInt());
+  }
+
 }
 
 void CWaterPumpControl::InitSerialSetup()
 {
-  Serial.begin(9600);
+  Serial.begin(BAUDRATE);
 }
 
 void CWaterPumpControl::saveStopTime(CTimeWaterPump *_ptime)
@@ -232,18 +257,25 @@ void CWaterPumpControl::run()
   this->m_pWifi->run(); //Handle reset Button
                         //HTTP Requests
                         //DNS for AP
+                        //OTA loop
 
 //Check is not in AP mode 
   if (!this->m_pWifi->isInAPMode())
   {
 
     this->m_TemperatureSensors.updateTemperature();
+    
+    //TODO ADD MULTICAST FOR DATERECORDING....
+    //String str("Hello World");
+    //
+    // this->m_pWifi->sendUDPMultiCast(&str);
+
 
     if(!m_IsTimerTemperatureAndWaterLimitAttached)
     {
       attachTimerToReadFountainFilled();
 
-      attachTimerToReadTemperature();
+
       this->m_IsTimerTemperatureAndWaterLimitAttached = true;
     }
 
@@ -319,9 +351,9 @@ void CWaterPumpControl::run()
           else if(StartDelayInMinues > 0 &&  this->m_restartTimeWithDelay != nullptr)
           {
             this->getCurrentCWaterPumpControlTime();
-            Serial.print( this->m_currentTime.getMinute());
-            Serial.print( this->m_restartTimeWithDelay->getMinute());
-            Serial.print("-");
+            //Serial.print( this->m_currentTime.getMinute());
+            //Serial.print( this->m_restartTimeWithDelay->getMinute());
+            //Serial.print("-");
             if (this->m_currentTime.getHour() == this->m_restartTimeWithDelay->getHour() && this->m_currentTime.getMinute() == this->m_restartTimeWithDelay->getMinute())
             {
               this->m_pWaterpump->TurnOnWaterPump();
@@ -410,6 +442,7 @@ void CWaterPumpControl::run()
           
           if(this->m_restartTimeWithDelay != nullptr)
           {
+            Serial.println("m_restartTimeWithDelay Deleting ....");
             delete this->m_restartTimeWithDelay ;
             this->m_restartTimeWithDelay = nullptr ;
           }
@@ -439,6 +472,7 @@ void CWaterPumpControl::run()
     this->m_pTimeClient->update();
 
     this->m_pWebServer->getESP8266WebServer()->handleClient();
+    // Serial.println("Webserver handle Client....");
   }
   else
   {
@@ -644,81 +678,78 @@ void CWaterPumpControl::setTurnOnDelay(int _startDelayInMinutes)
 
 bool CWaterPumpControl::isWaterInFountain()
 {
+  if (S_FountainStatus == FILLED || S_FountainStatus == OVERFILLED)
+  {
+    return true;
+  }
+  
+  return false;
+}
 
-  return S_FountainIsFilled;
-// #ifdef debug
-//   Serial.print("WaterlimitCounter: ");
-//   Serial.println(this->m_WaterlimitCounter);
-//   Serial.print("Analog Reader pin is = ");
-//   Serial.println(analogRead(PIN_WATERLIMIT_INPUT));
-// #endif
-
-//   if (analogRead(PIN_WATERLIMIT_INPUT) > 200)
-//   {
-//     this->m_WaterlimitCounter++;
-//     if (this->m_WaterlimitCounter >= this->S_ACTIVATELIMITBORDER)
-//     {
-// #ifdef debug
-//       Serial.print("isWaterInFountain: ");
-//       Serial.println("true");
-// #endif
-
-//       return true;
-//     }
-//   }
-//   else
-//   {
-//     this->m_WaterlimitCounter = 0;
-//   }
-
-// #ifdef debug
-//   Serial.print("isWaterInFountain: ");
-//   Serial.println("false");
-// #endif
-
-//   return false;
-
-//   // return digitalRead(PIN_WATERLIMIT_INPUT);
+e_FountainStatus CWaterPumpControl::getFountainStatus()
+{
+  return S_FountainStatus;
 }
 
 void CWaterPumpControl::readIsWaterInFountain()
 {
 
-int value = analogRead(PIN_WATERLIMIT_INPUT);
-#ifdef debug 
-Serial.print("INPUT OF PIN_WATERLIMIT_INPUT IS:");
-Serial.println(value);
-#endif
+  Serial.println("readIsWaterInFountain");
 
-  if (analogRead(PIN_WATERLIMIT_INPUT) > 200)
-  {
-    S_WaterlimitCounter++;
-    if (S_WaterlimitCounter >= S_ACTIVATELIMITBORDER)
-    {
-#ifdef debug
+  CWaterPumpControl::S_WaterLimitMessure = CWaterPumpControl::getInstance().getUltraSonicSensor()->getDistanceInCM();
 
-      Serial.print("isWaterInFountain: ");
-      Serial.println("true");
-#endif
-      S_FountainIsFilled = true;
-    }
-  }
-  else
+  
+  Serial.print(S_WaterLimitMessure);
+  Serial.println("cm");
+
+    Serial.print("Max:");
+    Serial.print(S_WaterLimitEmptyBorder);
+    Serial.print(", Min:");
+    Serial.println(S_WaterLimitFullBorder);
+
+  if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure <= CWaterPumpControl::S_WaterLimitFullBorder)
   {
-    S_WaterlimitCounter = 0;
-    S_FountainIsFilled = false;
+    CWaterPumpControl::S_FountainStatus = FILLED;
+    Serial.println("FILLED!");
+    return;
   }
+  else if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitFullBorder)
+  {
+     CWaterPumpControl::S_FountainStatus = OVEREMPTY;
+     Serial.println("OVEREMPTY!");
+    return;
+  }
+  else if (S_WaterLimitMessure == S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
+  {
+    CWaterPumpControl::S_FountainStatus = EMPTY;
+    Serial.println("EMPTY!");
+    return;
+  }
+  else if(S_WaterLimitMessure < S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
+  {
+    CWaterPumpControl::S_FountainStatus = OVERFILLED;
+    Serial.println("OVERFILLED!");
+    return;
+  }
+
+
+Serial.println("readIsWaterInFountain end");
+
+
 }
 
 
-
-
-
-void CWaterPumpControl::readTemperatures()
+void CWaterPumpControl::setWaterLimitMax(int _max)
 {
-  Serial.println("t");
-  // CWaterPumpControl::getInstance().m_TemperatureSensors.updateTemperature();
+    S_WaterLimitEmptyBorder = _max;
 }
+
+
+void CWaterPumpControl::setWaterLimitMin(int _min)
+{
+    S_WaterLimitFullBorder = _min;
+}
+
 
 
 void CWaterPumpControl::assignWaterPumpMode(WaterPumpModeType _mode)
@@ -759,16 +790,30 @@ Ticker* CWaterPumpControl::getTemperatureTicker()
 
 void CWaterPumpControl::attachTimerToReadFountainFilled()
 {
-  CWaterPumpControl::getInstance().getCallTickeReadFountainFilled()->attach_ms(100, CWaterPumpControl::readIsWaterInFountain );
+  CWaterPumpControl::getInstance().getCallTickeReadFountainFilled()->attach_ms(2000, CWaterPumpControl::readIsWaterInFountain );
 }
 
-
-void CWaterPumpControl::attachTimerToReadTemperature()
-{
-  CWaterPumpControl::getInstance().getTemperatureTicker()->attach_ms(200,  CWaterPumpControl::readTemperatures);
-}
 
 TemperatureSensor* CWaterPumpControl::getTemperatureSensors()
 {
   return &this->m_TemperatureSensors;
+}
+
+CUltraSonicSensor* CWaterPumpControl::getUltraSonicSensor()
+{
+  return &this->m_UltraSonicSensor;
+}
+
+
+int CWaterPumpControl::getWaterLimitMessure()
+{
+  return S_WaterLimitMessure;
+}
+int CWaterPumpControl::getWaterLimitMaxBorder()
+{
+  return S_WaterLimitEmptyBorder;
+}
+int CWaterPumpControl::getWaterLimitMinBorder()
+{
+  return S_WaterLimitFullBorder;
 }

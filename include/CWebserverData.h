@@ -27,6 +27,30 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
         box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.9), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     }
 
+    .p-05{
+        padding: 0.5rem !important;
+    }
+
+    #myProgress {
+    width: 100%;
+    background-color: grey;
+    margin-buttom:10px;
+    border-style: solid;
+    border-radius: 10px;
+    }
+
+    #myBar {
+    width: 0%;
+    height: 30px;
+    background-color: #3FA5FF;
+    text-align: center; /* To center it horizontally (if you want) */
+    line-height: 30px; /* To center it vertically */
+    color: white;
+    border-radius: 10px;
+    transition: width 3.0s;
+    }
+
+
     </style>
 
 </head>
@@ -38,6 +62,15 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
             <h3>
                 Wallway Waterpump Control V1.0 by Mert Mechanic
             </h3>
+
+        <h2 class="status col-sm-12 text-center statusbox" id="pumpstatus" style="font-size: 4rem;margin-bottom: 2rem;">
+            status
+        </h2>
+
+            <div id="myProgress">
+              <div id="myBar">0%</div>
+            </div>
+
             <table class="table table-striped">
                 <thead>
                 <tr>
@@ -45,18 +78,27 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 </tr>
                 </thead>
                 <tbody>
-                                <tr>
+                <tr>
+                    <td>WasserMessung &#8594; :</td>
+                    <td><div id="waterlimitdistance" class=".show">___</div></td>
+
+                </tr>
+                <tr>
+                    <td>WasserMessung % :</td>
+                    <td><div id="waterlimitdistancepercent" class=".show">___</div></td>
+                </tr>
+                <tr>
                     <td>Innen Temperatur:</td>
                     <td><div id="temperature1" class=".show">___</div></td>
 
                 </tr>
-                                <tr>
+                <tr>
                     <td>Außen Temperatur:</td>
                     <td><div id="temperature2" class=".show">___</div></td>
 
                 </tr>
                 <tr>
-                    <td>Zeit zum Wiedereinschalten:</td>
+                    <td>Wasserpume startet:</td>
                     <td><div id="restarttimestr">___</div></td>
 
                 </tr>
@@ -64,13 +106,19 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                     <td>Einschalte Intervall ist:</td>
                     <td><div id="startdelay">___</div></td>
                 </tr>
+                <tr>
+                    <td>WasserMessung &#8593; Voll:</td>
+                    <td><div id="waterlimitmaxborder">___</div></td>
+                </tr>
+                <tr>
+                    <td>WasserMessung &#8595; Leer:</td>
+                    <td><div id="waterlimitminborder">___</div></td>
+                </tr>
 
 
         </div>
 
-        <h2 class="status col-sm-12 text-center statusbox" id="pumpstatus" style="font-size: 4rem;margin-bottom: 2rem;">
-            status
-        </h2>
+
 
         <div class="col-sm-12">
         <table class="table table-striped table-dark">
@@ -104,13 +152,32 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
         </table>
         </div>
 <div class="col-sm-12 form-inline">
-        <form class="form-inline col-sm-12 p-4">
-            <input id="startdelayinput" class="form-control mr-sm-2 col-sm-2" type="input" placeholder="Einschaltverzoegerung" style="width: unset">min
-            <div class="col-sm-6"></div>
+        <form class="form-inline col-sm-12 p-05">
+            <input id="startdelayinput" class="form-control mr-sm-2 col-sm-2" type="input" placeholder="Einschaltverzoegerung" style="width: unset">
+            <div class="col-sm-6">min</div>
+
             <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick="sendDatastartdelayinminutes()">
                 Setzen
             </button>
         </form>
+
+        <form class="form-inline col-sm-12 p-05">
+            <input id="waterlimitmax" class="form-control mr-sm-2 col-sm-2" type="input" placeholder="Voll" style="width: unset">
+            <div class="col-sm-6"></div>
+
+            <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick="sendWaterLimitMax()">
+                Setzen
+            </button>
+        </form>
+        <form class="form-inline col-sm-12 p-05">
+            <input id="waterlimitmin" class="form-control mr-sm-2 col-sm-2" type="input" placeholder="Leer" style="width: unset">
+            <div class="col-sm-6"></div>
+
+            <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick="sendWaterLimitMin()">
+                Setzen
+            </button>
+        </form>
+
         <div class="col-sm-12"> </div>
         <div class="btn-group btn-group-lg col-sm-12 p-4 role="group">
             <button id="autoactive" class="btn btn-secondary ###LABELAUTOACTIVE###" type="button" onclick="sendModeData(0)">
@@ -154,6 +221,43 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
         xhr.open("POST", url, true);
         xhr.send(JSON.stringify(data));
     }
+
+    function sendWaterLimitMax() {
+        // console.log("sendWaterLimitMax")
+
+        var waterlimitmax = document.getElementById("waterlimitmax").value;
+        var data ={waterlimitmax:waterlimitmax};
+        var xhr = new XMLHttpRequest();
+        var url = "waterlimitmax";
+
+        xhr.onreadystatechange = function (ev) {
+            if (this.readyState == 4 && this.status == 200)
+            {
+
+            }
+        }
+        xhr.open("POST", url, true);
+        xhr.send(JSON.stringify(data));
+    }
+
+        function sendWaterLimitMin() {
+        // console.log("sendWaterLimitMin")
+
+        var waterlimitmin = document.getElementById("waterlimitmin").value;
+        var data ={waterlimitmin:waterlimitmin};
+        var xhr = new XMLHttpRequest();
+        var url = "waterlimitmin";
+
+        xhr.onreadystatechange = function (ev) {
+            if (this.readyState == 4 && this.status == 200)
+            {
+
+            }
+        }
+        xhr.open("POST", url, true);
+        xhr.send(JSON.stringify(data));
+    }
+
 
     function modeListener() {
         // console.log("modeListener");
@@ -221,6 +325,10 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 var temperature1 = object.temperature1;
                 var temperature2 = object.temperature2;
 
+                var waterlimitdistance = object.waterlimitdistance;
+                var waterlimitEmptyborder = object.waterlimitmaxborder;
+                var waterlimitFullborder = object.waterlimitminborder;
+
                 switch(mode) {
                     case "AUTO":
                         document.getElementById("autoactive").classList.add("active");
@@ -256,6 +364,98 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
 
                 document.getElementById("temperature1").innerText = temperature1;
                 document.getElementById("temperature2").innerText = temperature2;
+
+
+                //Limit
+                document.getElementById("waterlimitdistance").innerText = waterlimitdistance;
+                document.getElementById("waterlimitdistance").classList.remove("animate__animated");
+                document.getElementById("waterlimitdistance").classList.remove("animate__pulse");
+                document.getElementById("waterlimitdistance").classList.remove("show");
+                document.getElementById("waterlimitdistance").classList.add("hide");
+
+                document.getElementById("waterlimitdistance").classList.offsetWidth;
+                setTimeout(function(){
+                document.getElementById("waterlimitdistance").classList.add("animate__animated") } ,1);
+                setTimeout(function(){
+                document.getElementById("waterlimitdistance").classList.add("animate__pulse") } ,1);
+                setTimeout(function(){
+                document.getElementById("waterlimitdistance").classList.remove("hide") } ,1);
+                setTimeout(function(){
+                document.getElementById("waterlimitdistance").classList.add("show") } ,100);
+
+
+
+
+                document.getElementById("waterlimitminborder").innerText = waterlimitFullborder;
+                document.getElementById("waterlimitmaxborder").innerText = waterlimitEmptyborder;
+
+
+                //Calc percent
+                var max = waterlimitEmptyborder;
+                var min = waterlimitFullborder;
+
+
+                var delta = max - min;
+
+                var current = waterlimitdistance;
+                waterlimitpercent = (current - min) / (max - min) * 100;
+                waterlimitpercent.toFixed(2);
+                
+
+                var num = Number(waterlimitpercent) // The Number() only visualizes the type and is not needed
+                var roundedString = num.toFixed(2);
+                var rounded = Number(roundedString); 
+
+                document.getElementById("waterlimitdistancepercent").innerText = rounded + " %";
+                document.getElementById("waterlimitdistancepercent").classList.remove("animate__animated");
+                document.getElementById("waterlimitdistancepercent").classList.remove("animate__pulse");
+                document.getElementById("waterlimitdistancepercent").classList.remove("show");
+                document.getElementById("waterlimitdistancepercent").classList.add("hide");
+
+                document.getElementById("waterlimitdistancepercent").classList.offsetWidth;
+                setTimeout(function(){
+                document.getElementById("waterlimitdistancepercent").classList.add("animate__animated") } ,1);
+                setTimeout(function(){
+                document.getElementById("waterlimitdistancepercent").classList.add("animate__pulse") } ,1);
+                setTimeout(function(){
+                document.getElementById("waterlimitdistancepercent").classList.remove("hide") } ,1);
+                setTimeout(function(){
+                document.getElementById("waterlimitdistancepercent").classList.add("show") } ,100);
+
+                var roundedfloat = parseFloat(rounded);
+                var low = parseFloat(0);
+                var high = parseFloat(100);
+  
+                if (roundedfloat <= high && roundedfloat >= low )
+                {
+                  document.getElementById("myBar").innerText = rounded+"%"
+                  document.getElementById("myBar").style.width = rounded+ "%";
+                  document.getElementById("myBar").style.backgroundColor  = "#3FA5FF";
+                  document.getElementById("myProgress").style.backgroundColor = "grey";
+                }
+                else if(roundedfloat > high )
+                {
+                    document.getElementById("myBar").innerText = rounded+"%"
+                    document.getElementById("myBar").style.width = 100+ "%";
+                    document.getElementById("myBar").style.backgroundColor = "#FF3F3F";
+                    document.getElementById("myProgress").style.backgroundColor = "grey";
+                }
+                else if(roundedfloat < high && roundedfloat < low)
+                {
+                    document.getElementById("myBar").innerText = rounded+"%"
+                    document.getElementById("myBar").style.width = 0+ "%";
+                    document.getElementById("myProgress").style.backgroundColor = "red";
+                }
+                else
+                {
+                    
+                }
+                
+
+                
+
+
+
 //tmp1
                 document.getElementById("temperature1").classList.remove("animate__animated");
                 document.getElementById("temperature1").classList.remove("animate__pulse");
@@ -289,9 +489,10 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 document.getElementById("temperature2").classList.add("show") } ,100);
 
 
+
+
+
                 var status = object.status;
-
-
                 if(status != statuspump)
                 {
                 statuspump = status;
@@ -308,9 +509,10 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 setTimeout(function(){
                 document.getElementById("pumpstatus").classList.add("animate__flash") } ,100);
 
+
+                
+                
                 }
-                console.log("status:" + status);
-                console.log("pumpstatus:" + pumpstatus);
                 if (status == true)
                 {
 
@@ -327,6 +529,7 @@ static constexpr char g_dashboard[] PROGMEM = R"=====(
                 
                 }
                
+
 
             }
         };
@@ -583,6 +786,7 @@ static constexpr char wifisetupwebpage[] PROGMEM = R"=====(
 
         spinner();
     }
+
 
 
 </script>

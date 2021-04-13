@@ -5,7 +5,14 @@
 
 #include "CWebServer.h"
 #include "ArduinoJson.h"
+
 #include "FS.h"
+#include <LITTLEFS.h>
+#include "CFileSystem.h"
+#ifndef CONFIG_LITTLEFS_FOR_IDF_3_2
+ #include <time.h>
+#endif 
+
 
 #include "Clcd.h"
 
@@ -43,17 +50,17 @@ String *CWifi::getPassword()
 void CWifi::init(const uint8_t _resetPin)
 {
     this->m_pLcd = nullptr;
-    SPIFFS.begin();
     this->setResetPin(_resetPin);
     this->wifiConnect();
+    this->m_WifiUDP = WiFiUDP();
 }
 
 void CWifi::initWithLCD(Clcd &_lcd, uint8_t _resetPin)
 {
     this->m_pLcd = &_lcd;
-    SPIFFS.begin();
     this->setResetPin(_resetPin);
     this->wifiConnect();
+    this->m_WifiUDP = WiFiUDP();
 }
 
 bool CWifi::isInAPMode()
@@ -92,87 +99,84 @@ void CWifi::wifiConnect()
     //delay(1000);
     this->m_isInAPMode = false;
 
-    if (SPIFFS.exists("/config.json"))
+    const char *_ssid = "";
+    const char *_pass = "";
+    String str;
+
+    if (CFileSystem::getInstance().readFile("/config.json", &str))
     {
-        const char *_ssid = "";
-        const char *_pass = "";
-        File configFile = SPIFFS.open("/config.json", "r");
-        if (configFile)
+        DynamicJsonBuffer JsonBuffer;
+        JsonObject &jObject = JsonBuffer.parseObject(str);
+        if (jObject.success())
         {
-            size_t size = configFile.size();
-            std::unique_ptr<char[]> buf(new char[size]);
-            configFile.readBytes(buf.get(), size);
-            configFile.close();
+            _ssid = jObject["ssid"];
+            _pass = jObject["password"];
+            this->m_pSSID = new String(_ssid);
+            this->m_pPassword = new String(_pass);
 
-            DynamicJsonBuffer JsonBuffer;
-            JsonObject &jObject = JsonBuffer.parseObject(buf.get());
-            if (jObject.success())
+            Serial.print("Try to connect to:");
+            Serial.print(_ssid);
+
+            if (this->m_pLcd != nullptr)
             {
-                _ssid = jObject["ssid"];
-                _pass = jObject["password"];
-                this->m_pSSID = new String(_ssid);
-                this->m_pPassword = new String(_pass);
+                String line1("Try to connect:");
+                String line2(_ssid);
+                this->m_pLcd->setDisplayText(&line1, &line2);
+            }
 
-                Serial.print("Try to connect to:");
-                Serial.print(_ssid);
+#ifdef STATICIPADDRESS
 
-                if (this->m_pLcd != nullptr)
+            IPAddress StaticIP(STATICIPADDRESS);
+            IPAddress GatewayIP(STATICGATEWAY);
+            IPAddress Netmask(STATICSUBNETMASK);
+
+            if (WiFi.config(StaticIP, GatewayIP, Netmask, GatewayIP, GatewayIP) == false)
+            {
+                String cfglcd1("Configuration");
+                String cfglcd2("failed");
+                Serial.println("Configuration failed.");
+                this->m_pLcd->setDisplayText(&cfglcd1, &cfglcd2);
+            }
+#endif
+
+            Serial.println(*this->m_pSSID);
+            Serial.println(*this->m_pPassword);
+
+            WiFi.mode(WIFI_STA);
+            WiFi.begin(_ssid, _pass);
+            this->m_isInAPMode = false;
+
+            while (WiFi.status() != WL_CONNECTED)
+            {
+                delay(500);
+                Serial.println(".");
+                if (CWifi::handleResetButton())
                 {
-                    String line1("Try to connect:");
-                    String line2(_ssid);
-                    this->m_pLcd->setDisplayText(&line1, &line2);
-                }
-
-                #ifdef STATICIPADDRESS
-                           
-                    IPAddress StaticIP(STATICIPADDRESS);
-                    IPAddress GatewayIP(STATICGATEWAY);
-                    IPAddress Netmask(STATICSUBNETMASK);
-
-                    if (WiFi.config(StaticIP, GatewayIP, Netmask, GatewayIP, GatewayIP) == false)
+                    if (this->m_pLcd != nullptr)
                     {
-                        String cfglcd1("Configuration");
-                        String cfglcd2("failed");
-                        Serial.println("Configuration failed.");
-                        this->m_pLcd->setDisplayText(&cfglcd1, &cfglcd2);
+                        String line1("Deleting");
+                        String line2("Wifi Setup!");
+                        this->m_pLcd->setDisplayText(&line1, &line2);
                     }
-                #endif
 
-  
-                Serial.println(*this->m_pSSID);
-                Serial.println(*this->m_pPassword);
-
-                WiFi.mode(WIFI_STA);
-                WiFi.begin(_ssid, _pass);
-                this->m_isInAPMode = false;
-
-
-                while (WiFi.status() != WL_CONNECTED)
-                {
-                    delay(500);
-                    Serial.println(".");
-                    if (CWifi::handleResetButton())
-                    {
-                        if (this->m_pLcd != nullptr)
-                        {
-                            String line1("Deleting");
-                            String line2("Wifi Setup!");
-                            this->m_pLcd->setDisplayText(&line1, &line2);
-                        }
-
-                        wifiConnect();
-                        break;
-                    }
+                    wifiConnect();
+                    break;
                 }
             }
         }
     }
+    else
+    {
+        Serial.println("Failed to Read File");
+    }
+
     if (WiFi.status() == WL_CONNECTED)
     {
         //Wifi is connected to config wifi setup
         this->m_pIP = new IPAddress(WiFi.localIP());
         this->m_pSubnetmask = new IPAddress(WiFi.subnetMask());
         this->m_pGateway = new IPAddress(WiFi.gatewayIP());
+        this->m_pMutlicastAddress = new IPAddress(MULTICASTADDRESS);
 
         Serial.print("IpAddress is:");
         Serial.println(this->m_pIP->toString());
@@ -273,7 +277,7 @@ void CWifi::run()
     CWebServer::getInstance().getESP8266WebServer()->handleClient(); //Method for http request handleing
 
     CWifi::getInstance().handleResetButton();                        //Method for observing WIFI reset button 
-
+    
 }
 
 //Listen to the Reset Button ... Interrupt everything and count 5 seconds 
@@ -327,10 +331,10 @@ bool CWifi::handleResetButton()
         
 
         this->m_isInAPMode = true;
-
-        if (SPIFFS.exists("/config.json"))
+        String str;
+        if (CFileSystem::getInstance().readFile("/config.json", &str))
         {
-            SPIFFS.remove("/config.json");
+            CFileSystem::getInstance().deleteFile("/config.json");
             Serial.println("Remove Config file...");
             this->wifiConnect();
         }
@@ -339,4 +343,21 @@ bool CWifi::handleResetButton()
 
     
     return false;  
+}
+
+
+
+void CWifi::sendUDPMultiCast(String* pString) 
+{
+
+  Serial.print("sendUDP : ");
+  Serial.println(*pString);
+
+  // convert string to char array
+  char msg[255];
+  pString->toCharArray(msg,255);
+
+  this->m_WifiUDP.beginPacketMulticast(*this->m_pMutlicastAddress, MULTICASTPORT, WiFi.localIP());
+  this->m_WifiUDP.write(msg);
+  this->m_WifiUDP.endPacket();
 }

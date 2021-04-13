@@ -7,7 +7,9 @@
 #include <WiFi.h>
 #include "SPIFFS.h"
 #endif
-class ESP8266WebServer;
+#include <WiFiUdp.h>
+
+class AsyncWebserver;
 class Clcd;
 
 #include "CWebServer.h"
@@ -59,6 +61,8 @@ public:
     const char *INIT_APPASSWORD = "12345678";
     bool m_isInAPMode;
 
+    
+
     void init(uint8_t _resetPin);
     void initWithLCD(Clcd &_lcd, uint8_t _resetPin);
     
@@ -68,7 +72,8 @@ public:
     void run();
     
 
-
+    void sendUDPMultiCast(String *_pString);
+    
 
 private:
     String* m_pSSID;
@@ -84,6 +89,9 @@ private:
     IPAddress *m_pGateway;
     IPAddress *m_pSubnetmask;
 
+    IPAddress *m_pMutlicastAddress;
+    WiFiUDP m_WifiUDP;
+    
     int m_resetTimeCounter;
     static const int s_limitResetCounter = 5;
 

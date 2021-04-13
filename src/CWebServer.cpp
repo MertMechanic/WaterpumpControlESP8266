@@ -4,11 +4,13 @@
 
 #include "ArduinoJson.h"
 #include "FS.h"
+#include "CFileSystem.h"
 
 #include "CWaterPumpControl.h"
 #include "CWaterPump.h"
 #include "Clcd.h"
 #include "CTemperatureSensor.h"
+#include "CUltraSonicSensor.h"
 //
 //GLOBAL FUNCTIONS FOR WEBSERVER HTTP REQUESTS
 //
@@ -63,11 +65,38 @@ void handleFetchDataForDashBoard()
     String tmp;
 
 
-    jsonObject["status"] = CWaterPumpControl::getInstance().isWaterInFountain();
+    if ( CWaterPumpControl::getInstance().isWaterInFountain())
+    {
+        jsonObject["status"] = true;
+    }
+    else
+    {
+         jsonObject["status"] = false;
+    }
+    
+
+
+    jsonObject["fountainstatus"] = CWaterPumpControl::getInstance().getFountainStatus();
+
+    if ( CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::FILLED)
+    {
+        jsonObject["fountainstatus"] = "FILLED";
+    }
+    else if ( CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::OVERFILLED)
+    jsonObject["fountainstatus"] = "OVERFILLED";
+    else if ( CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::EMPTY)
+    jsonObject["fountainstatus"] = "EMPTY";
+    else if ( CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::OVEREMPTY)
+    jsonObject["fountainstatus"] = "OVEREMPTY";
+    
+
 
     jsonObject["temperature1"]    =  *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(0, &tmp);
     jsonObject["temperature2"]    =  *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(1, &tmp);
     
+    jsonObject["waterlimitdistance"]  = CWaterPumpControl::getInstance().getWaterLimitMessure();
+    jsonObject["waterlimitminborder"] = CWaterPumpControl::getInstance().getWaterLimitMinBorder();
+    jsonObject["waterlimitmaxborder"] = CWaterPumpControl::getInstance().getWaterLimitMaxBorder();
 
     CTimeWaterPump* pTime = CWaterPumpControl::getInstance().getRestartTimeWithDelay();
     if (pTime != nullptr)
@@ -107,24 +136,15 @@ void handleAPModeSettingsUpdate()
 
     Serial.println("handleSettingsUpdate called...");
     JsonObject &JsonObject = getJsonObjectFromResponse();
-
-    //DEBUG
-    // char buffer[1024];
-    // JsonObject.printTo(buffer,1024);
-    // Serial.println(buffer);
-
-    // String ssid = JsonObject.get("ssid");
-    // String password = JsonObject.get("password");
-
-    File configFile = SPIFFS.open("/config.json", "w");
-    JsonObject.printTo(configFile);
-    configFile.close();
+    String str;
+    JsonObject.printTo(str);
+    CFileSystem::getInstance().writeFile("/config.json", &str);
 
     CWebServer::getInstance().getESP8266WebServer()->send(200, "application/json", "{\"status\":\"ok\"}");
     #ifdef debug 
     Serial.println("send status ok");
     #endif
-    delay(500);
+    delay(200);
 
 
 
@@ -177,7 +197,40 @@ void handleChangeStartDelay()
     Serial.println("min");
 
     CWaterPumpControl::getInstance().setTurnOnDelay(startInMinutes);
+
+    String str(startInMinutes);
+    CFileSystem::getInstance().writeFile("/startdelay.txt", &str);
+
 }
+
+
+void handleChangeWaterLimitMax()
+{
+    int max = getJsonObjectFromResponse()["waterlimitmax"];
+    Serial.print("Max Set to: ");
+    Serial.println(max);
+
+    CWaterPumpControl::getInstance().setWaterLimitMax(max);
+
+    String str(max);
+    CFileSystem::getInstance().writeFile("/watermax.txt", &str);
+
+}
+
+
+void handleChangeWaterLimitMin()
+{
+    int min = getJsonObjectFromResponse()["waterlimitmin"];
+    Serial.print("Min Set to: ");
+    Serial.println(min);
+
+    CWaterPumpControl::getInstance().setWaterLimitMin(min);
+
+    String str(min);
+    CFileSystem::getInstance().writeFile("/watermin.txt", &str);
+}
+
+
 
 void getWaterPumpControlMode()
 {
@@ -231,9 +284,15 @@ void CWebServer::setupWebPageNormalMode()
     this->getESP8266WebServer()->on("/fetchdata",handleFetchDataForDashBoard );
 
     this->getESP8266WebServer()->on("/startdelay", handleChangeStartDelay);
+
+    this->getESP8266WebServer()->on("/waterlimitmax", handleChangeWaterLimitMax);
+    this->getESP8266WebServer()->on("/waterlimitmin", handleChangeWaterLimitMin);
+
     this->getESP8266WebServer()->on("/changemode", handleChangeWaterPumpModeData);
+
     
 
     this->getESP8266WebServer()->begin();
+    
 }
 
