@@ -1,24 +1,28 @@
 #pragma once
 
-
+#include "SPI.h"
 #include "CTimeWaterPump.h"
 #include "Defines.h"
 #include "Ticker.h"
 #include "CTimeWaterPumpRingBuffer.h"
 #include "CTemperatureSensor.h"
 #include "CUltraSonicSensor.h"
-class NTPClient        ;
-class AsyncWebserver   ;
-class Clcd             ;
-class CWaterPump       ;
-class CWifi            ;
-class WiFiUDP          ;
-class CWebServer       ;
+#include "CWaterPumpControlAdditionalWebpages.h"
+
+#include "CSensorAdafruit_VL53L0X.h"
+
+class NTPClient                 ;
+class AsyncWebserver            ;
+class Clcd                      ;
+class CWaterPump                ;
+class CWifiBasic                ;
+class WiFiUDP                   ;
+class CWebServerBasic           ;
 
 
+class CSensorAdafruit_VL53L0X;
 
-
-enum e_FountainStatus { FILLED, EMPTY, OVERFILLED, OVEREMPTY};
+enum e_FountainStatus { FILLED, EMPTY, OVERFILLED, OVEREMPTY, ERROR};
 
 class CWaterPumpControl
 {
@@ -74,6 +78,7 @@ public:
     Ticker* getCallTickeReadFountainFilled();
     Ticker* getLCDBacklightTicker();
     Ticker* getTemperatureTicker();
+    Ticker* getCallTickerSensorAdafruit_VL53L0X();
 
     static void deattachTimerToBackLightTurnoff();
 
@@ -92,17 +97,18 @@ public:
 
     e_FountainStatus getFountainStatus();
 
-
+    CSensorAdafruit_VL53L0X* getSensorAdafruit_VL53L0X();
 
 private:
-    NTPClient         *m_pTimeClient;
-    Clcd              *m_pLcd;
-    CWaterPump        *m_pWaterpump;
-    CWifi             *m_pWifi;
-    WiFiUDP           *m_pNtpUDP;
-    CWebServer        *m_pWebServer;  
-    TemperatureSensor  m_TemperatureSensors;
-    CUltraSonicSensor  m_UltraSonicSensor;
+    NTPClient                  *m_pTimeClient;
+    CWaterPump                 *m_pWaterpump;
+    CWifiBasic                 *m_pWifi;
+    WiFiUDP                    *m_pNtpUDP;
+    CWebServerBasic            *m_pWebServer;  
+    TemperatureSensor           m_TemperatureSensors;
+    // CUltraSonicSensor           m_UltraSonicSensor;
+    CSensorAdafruit_VL53L0X     m_SensorAdafruit_VL53L0X;
+    Clcd                       *m_pLcd;
 
     bool m_ModeHasChanged;
     int  m_DisplayFlag;
@@ -117,6 +123,7 @@ private:
     Ticker m_CallTickerInputButtons;
     Ticker m_CallTickerFountainFilled;
     Ticker m_CallTickerTemperatureMessure;
+    Ticker m_CallTickerSensorAdafruit_VL53L0X;
 
 
     void InitSerialSetup();
@@ -147,6 +154,7 @@ private:
     int m_CurrentRunCounter;
     static void attachTimerToInputButtons();
     static void attachTimerToReadFountainFilled();
+    static void attachTimerToSensorAdafruit_VL53L0X();
 
     bool m_IsTimerTemperatureAndWaterLimitAttached;
 

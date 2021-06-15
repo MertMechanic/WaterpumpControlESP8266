@@ -7,6 +7,8 @@
 
 enum displayStatus {AUTO_FULL, AUTO_EMPTY, MANUEL_ON, MANUEL_OFF, NONEDISPLAY_STATUS};
 
+//Run Wire.begin before - to init I2C Bus
+
 class Clcd
 {
     
@@ -47,11 +49,13 @@ public:
 
     LiquidCrystal_I2C *getLCDInstance();
     
-    void init(__uint8_t _sda_pin, __uint8_t _scl_pin);
+    void init();
+
+    
 
     void setLine(String *_pText, int _lineNumber);
-    void setLineA(String *_pText);
-    void setLineB(String *_pText);
+
+    void setLine(const char *_pText, int _lineNumber);
 
     void showManualON();
     void showManualOFF();

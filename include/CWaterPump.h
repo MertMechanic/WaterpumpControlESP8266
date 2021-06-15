@@ -37,5 +37,5 @@ class CWaterPump
         int m_turnOnDelay;
         
         WaterPumpModeType m_WaterPumpmode;
-        C2RelayModule* m_pRelayModule;
+        C2RelayModule*    m_pRelayModule;
 };

@@ -1,23 +1,26 @@
 
+#include "Arduino.h"
 #include <NTPClient.h>
 #include <WiFiUdp.h>
-
-#include "Arduino.h"
+#include "ArduinoOTA.h"
 #include "Defines.h"
 #include "CWaterPumpControl.h"
-#include "CFileSystem.h"
 #include "CWaterPump.h"
-#include "CWifi.h"
+#include "LittleFS.h"
+#include "CFilesystem.h"
 #include "Clcd.h"
-
+#include "CAdditionalWebpages.h"
+#include "CWaterPumpControlAdditionalWebpages.h"
 #include "CWaterPump.h"
-#include "ESPAsyncWebServer.h"
 #include "C2RelayModule.h"
-
 #include "CTemperatureSensor.h"
+#include "CWifiBasic.h"
+#include "CWebServerBasic.h"
+#include "CSensorAdafruit_VL53L0X.h"
 
-// #define debug 1
-
+//** Commend this out for Debugging 
+//
+//#define debug 1
 //#define noWIFIREST 1
 
 
@@ -42,6 +45,15 @@ CWaterPumpControl::~CWaterPumpControl()
   // delete this->m_pLastPumpStopTimeRingBuffer;
 }
 
+
+// Ticker m_CallTickerSensor;
+
+// void attachTimerToSensor()
+// {
+//   m_CallTickerSensor.attach_ms(75, CSensorAdafruit_VL53L0X::doMeasure);
+// }
+
+
 /**
  * @brief Init Method run - once before running run()
  * -> Define PinMode of Arduino 
@@ -65,49 +77,72 @@ void CWaterPumpControl::init()
   pinMode(PIN_BUTTON_MIDDLE, INPUT_PULLUP); // Input Pins Button MIDDLE
   pinMode(PIN_BUTTON_RIGHT, INPUT_PULLUP);  // Input Pins Button RIGHT
 
-  this->m_UltraSonicSensor.initUltraSonicSensorPins(PIN_ULTRASONIC_TRIGGER, PIN_ULTRASONIC_ECHO);
-
 ///INIT SERIAL
 #ifdef debug
   Serial.println("Init Serial Setup");
 #endif
+
   this->InitSerialSetup();  //init Serial out for Monitoring
 
 #ifdef debug
   Serial.println("Serial setup end...");
 #endif
 
+
 ///INIT DISPLAY
 #ifdef debug
   Serial.println("Init LCD Setup");
 #endif
-  Clcd::getInstance().init(PIN_SDA, PIN_SCL);     //Init LCD 
-  this->m_pLcd = &Clcd::getInstance();            //LCD Singleton
+
+  //Init I2C Bus
+  Wire.begin(PIN_SCL, PIN_SDA),
+
+  //Init LCD Display
+  Clcd::getInstance().init();                     //Init LCD
+  // this->m_pLcd = &Clcd::getInstance();            //LCD Singleton
+
+  CSensorAdafruit_VL53L0X sensor;
+  sensor.initLongRange();
+
+    // delay(100);
+    // attachTimerToSensor();
+    // delay(100);
+
+
 
   ////INIT WIFISetup
   //
-  CWifi::getInstance().initWithLCD(Clcd::getInstance(), PIN_WIFI_RESET);      //Init WIFI
+  //**Init Wifi, Wifi with LCD for showing IP and settings on LCD
+  //  Init WebServer Instance
+  //  Init NTP UDP for getting TimeMessages via NTP
+  //  Init TimeClient which is also used for Time
+  this->m_pWifi       = &CWifiBasic::getInstance();    // Init Wifi 
 
-  this->m_pWifi       = &CWifi::getInstance();                                //Init Webserver              
-  this->m_pWebServer  = &this->m_pWifi->getWebserver();                       //Init Webserver
+  CWaterPumpControlAdditionalWebpages AdditionalWebpages;
+   CAdditionalWebpages* p = (CAdditionalWebpages*)&AdditionalWebpages;      
 
+  // AdditionalWebpages.setupAdditionalWebPageNormalMode();
 
-
-
-  this->m_pNtpUDP     = new WiFiUDP();                                                  // Init NTP 
-  this->m_pTimeClient = new NTPClient(*m_pNtpUDP, "europe.pool.ntp.org", 3600, 60000);  // Init NTP 
+  
+  this->m_pWifi->init(PIN_WIFI_RESET, p);                                                 // Init Wifi 
+  // this->m_pWifi->init(PIN_WIFI_RESET);                                                 // Init Wifi 
+  this->m_pWebServer  = &this->m_pWifi->getWebserver();                                   // Init Webserver
+  this->m_pNtpUDP     = new WiFiUDP();                                                    // Init NTP UDP
+  this->m_pTimeClient = new NTPClient(*m_pNtpUDP, "europe.pool.ntp.org", 3600, 60000);    // Init NTP Client
 #ifdef debug
   Serial.println("WIFI setup end...");
 #endif
+
   //
   ////INIT WIFI SETUP
 
-  ///INIT TIME VALUES
+  ///**** Start INIT TIME VALUES ****///
+  //
   //
   m_pTimeClient->begin();               // Start NTP
-  //ChangeToSummerTime                  //
-  m_pTimeClient->setTimeOffset(7200);   // Change Time of NTP
+  m_pTimeClient->setTimeOffset(7200);   // Change Time of NTP to Summertime
 
+  /* Init RingBuffer for TimeSaving */
   this->m_pLastPumpRunTimeRingBuffer  = new CTimeWaterPumpRingBuffer();   //Init Ringbuffer for saveing data of pump
   this->m_pLastPumpStopTimeRingBuffer = new CTimeWaterPumpRingBuffer();   //Init Ringbuffer for saveing data of pump
 
@@ -133,7 +168,8 @@ void CWaterPumpControl::init()
   this->m_CurrentRunCounter   = 0; //Increase every time when is saved ... < 3 set to 0
   this->m_CurrentStopCounter  = 0;
   //
-  ////End INIT TIME VALUES
+  //
+  ///**** End INIT TIME VALUES ****///
 
   this->m_restartTimeWithDelay = nullptr;
 
@@ -143,31 +179,42 @@ void CWaterPumpControl::init()
   Serial.println("init RelaysModule end...");
 #endif
 
-  //Test Relays
-  String a("Relais test");                                      
-  String b("running");                                        
-  String c("end");                                            
-  this->m_pLcd->setLine(&a, 0);
-  this->m_pLcd->setLine(&b, 1);
-  this->m_pWaterpump->runTestRelaysModuleWithDelayOf(200);
-  this->m_pLcd->setLine(&c, 1);
+//   //Test Relays
+   String a("Relais test");                                      
+   String b("running");                                        
+   String c("end");                         
+   Clcd::getInstance().setLine(&a, 0);
+   Clcd::getInstance().setLine(&b, 1);
+  // this->m_pWaterpump->runTestRelaysModuleWithDelayOf(200);
+
+#ifdef debug
+  Serial.println("init RTurnOffWaterPump()...");
+#endif
+  this->m_pWaterpump->TurnOffWaterPump();
+
+#ifdef debug
+  Serial.println("init print End()...");
+#endif
+  Clcd::getInstance().setLine(&c, 1);
 
 
   S_FountainStatus = EMPTY;
 
   m_IsTimerTemperatureAndWaterLimitAttached = false;
-
-  this->attachTimerToInputButtons();
 #ifdef debug
-  Serial.println("Interrupttimer to Buttons attached ...");
+  Serial.println("attachtimer()...");
+#endif
+ this->attachTimerToInputButtons();
+#ifdef debug
+ Serial.println("Interrupttimer to Buttons attached ...");
 #endif
 
-    
-    // pinMode(PIN_TEMPERATURE_MESSURE, INPUT);  //Temperature MEssure
-    m_TemperatureSensors.init(CWaterPumpControl::S_COUNTOFTEMPERAURESENSORS, PIN_TEMPERATURE_MESSURE); 
+   
+   // pinMode(PIN_TEMPERATURE_MESSURE, INPUT);  //Temperature MEssure
+   m_TemperatureSensors.init(CWaterPumpControl::S_COUNTOFTEMPERAURESENSORS, PIN_TEMPERATURE_MESSURE); 
 
 #ifdef debug
-  Serial.println("Tempinit Done ...");
+ Serial.println("Tempinit Done ...");
 #endif
 
 
@@ -175,26 +222,23 @@ void CWaterPumpControl::init()
 //
 //
 
-  String WaterLimitMax;
-  String WaterLimitMin;
-  String StartDelay   ;
-
-  if (CFileSystem::getInstance().readFile("/watermax.txt", &WaterLimitMax))
-  {
-    this->S_WaterLimitEmptyBorder = WaterLimitMax.toInt();
-  }
-
-  if (CFileSystem::getInstance().readFile("/watermin.txt", &WaterLimitMin))
-  {
-    this->S_WaterLimitFullBorder = WaterLimitMin.toInt();
-  }
-
-  if (CFileSystem::getInstance().readFile("/startdelay.txt", &StartDelay))
-  {
-    this->setTurnOnDelay(StartDelay.toInt());
-  }
-
-}
+ String WaterLimitMax;
+ String WaterLimitMin;
+ String StartDelay;
+ if (CFileSystem::getInstance().readFile("/watermax.txt", &WaterLimitMax))
+ {
+   this->S_WaterLimitEmptyBorder = WaterLimitMax.toInt();
+ }
+ if (CFileSystem::getInstance().readFile("/watermin.txt", &WaterLimitMin))
+ {
+   this->S_WaterLimitFullBorder = WaterLimitMin.toInt();
+ }
+ if (CFileSystem::getInstance().readFile("/startdelay.txt", &StartDelay))
+ {
+   this->setTurnOnDelay(StartDelay.toInt());
+ }
+ 
+ }
 
 void CWaterPumpControl::InitSerialSetup()
 {
@@ -222,6 +266,9 @@ void CWaterPumpControl::saveStopTime(CTimeWaterPump *_ptime)
     }
   }
 }
+
+
+
 void CWaterPumpControl::saveRunTime(CTimeWaterPump *_ptime)
 {
 #ifdef debug
@@ -254,17 +301,25 @@ CTimeWaterPump* CWaterPumpControl::getRestartTimeWithDelay()
 void CWaterPumpControl::run()
 {
 
+
+
+#ifdef debug
+  Serial.println("Wifi run()");
+#endif
   this->m_pWifi->run(); //Handle reset Button
                         //HTTP Requests
                         //DNS for AP
                         //OTA loop
 
-//Check is not in AP mode 
+  //Check is not in AP mode
   if (!this->m_pWifi->isInAPMode())
   {
 
+#ifdef debug
+    Serial.println("update Temperature()");
+#endif
     this->m_TemperatureSensors.updateTemperature();
-    
+
     //TODO ADD MULTICAST FOR DATERECORDING....
     //String str("Hello World");
     //
@@ -274,7 +329,7 @@ void CWaterPumpControl::run()
     if(!m_IsTimerTemperatureAndWaterLimitAttached)
     {
       attachTimerToReadFountainFilled();
-
+      attachTimerToSensorAdafruit_VL53L0X();
 
       this->m_IsTimerTemperatureAndWaterLimitAttached = true;
     }
@@ -318,7 +373,7 @@ void CWaterPumpControl::run()
           Serial.println("Fountain full + Pump running....");
           #endif
 
-          CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
+          Clcd::getInstance().showWaterIsNotEmptySinceTime();
         }
         //Fountain filled and pump Stopped
         else if (this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
@@ -338,15 +393,15 @@ void CWaterPumpControl::run()
 
 
             String msg("Brunnen voll");
-            this->m_pLcd->showTurnLoadingRoutine(50, "+", true, &msg);
+             Clcd::getInstance().showTurnLoadingRoutine(50, "+", true, &msg);
 
 
             String msg2;
             msg2 =  *(this->m_restartTimeWithDelay->getAsString(&msg2));
 
             msg = "Start bei";
-            this->m_pLcd->setLine(&msg, 0);
-            this->m_pLcd->setLine(&msg2,1);
+            Clcd::getInstance().setLine(&msg, 0);
+            Clcd::getInstance().setLine(&msg2, 1);
           }
           else if(StartDelayInMinues > 0 &&  this->m_restartTimeWithDelay != nullptr)
           {
@@ -358,9 +413,9 @@ void CWaterPumpControl::run()
             {
               this->m_pWaterpump->TurnOnWaterPump();
               String msg("Turn On  Waterpump");
-              this->m_pLcd->showTurnLoadingRoutine(50, "#", true, &msg);
+              Clcd::getInstance().showTurnLoadingRoutine(50, "#", true, &msg);
               this->saveRunTime(this->getCurrentCWaterPumpControlTime());
-              CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
+              Clcd::getInstance().showWaterIsNotEmptySinceTime();
 
               delete this->m_restartTimeWithDelay;
               this->m_restartTimeWithDelay = nullptr;
@@ -371,9 +426,9 @@ void CWaterPumpControl::run()
           {
             this->m_pWaterpump->TurnOnWaterPump();
             String msg("Turn On  Waterpump");
-            this->m_pLcd->showTurnLoadingRoutine(50, "#", true, &msg);
+             Clcd::getInstance().showTurnLoadingRoutine(50, "#", true, &msg);
             this->saveRunTime(this->getCurrentCWaterPumpControlTime());
-            CWaterPumpControl::getInstance().m_pLcd->showWaterIsNotEmptySinceTime();
+            Clcd::getInstance().showWaterIsNotEmptySinceTime();
 
           }
           
@@ -425,13 +480,27 @@ void CWaterPumpControl::run()
           #endif
 
           this->m_pWaterpump->TurnOffWaterPump();
+          #ifdef debug
+          Serial.println("TurnOffWaterPump....End");
+          #endif
+
           String msg("Turn Off  Waterpump");
-          this->m_pLcd->showTurnLoadingRoutine(50, "#", false, &msg);
+          Clcd::getInstance().showTurnLoadingRoutine(50, "#", false, &msg);
+
+          #ifdef debug
+          Serial.println("showTurnLoadingRoutine....End");
+          #endif
+
 
           this->saveStopTime(this->getCurrentCWaterPumpControlTime());
           String time;
-          this->m_pLcd->showWaterIsEmpty(this->getCurrentCWaterPumpControlTime()->getAsString(&time));
+          Clcd::getInstance().showWaterIsEmpty(this->getCurrentCWaterPumpControlTime()->getAsString(&time));
           // this->setStartTimeWithDelay();
+
+          #ifdef debug
+          Serial.println("Save StopTime and Show message on Display ....End");
+          #endif
+
         }
         //Foundtain empty and pump Stopped
         else if (!this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
@@ -447,19 +516,24 @@ void CWaterPumpControl::run()
             this->m_restartTimeWithDelay = nullptr ;
           }
 
+          #ifdef debug
+          Serial.println("showWaterIsEmpty .... with time");
+          #endif 
+
           String time;
-          this->m_pLcd->showWaterIsEmpty(this->getCurrentCWaterPumpControlTime()->getAsString(&time));
+          Clcd::getInstance().showWaterIsEmpty(this->getCurrentCWaterPumpControlTime()->getAsString(&time));
+          
         }
         break;
       case MANUELON:
         this->m_pWaterpump->TurnOnWaterPump();
-        this->m_pLcd->showManualON();
+        Clcd::getInstance().showManualON();
         delete this->m_restartTimeWithDelay;
         this->m_restartTimeWithDelay = nullptr;
         break;
       case MANUELOFF:
         this->m_pWaterpump->TurnOffWaterPump();
-        this->m_pLcd->showManualOFF();
+        Clcd::getInstance().showManualOFF();
         delete this->m_restartTimeWithDelay;
         this->m_restartTimeWithDelay = nullptr;
         break;
@@ -478,7 +552,7 @@ void CWaterPumpControl::run()
   {
     String a("--- AP-Mode ----");
     String b("--  !Active! --");
-    this->m_pLcd->setDisplayText(&a, &b);
+    Clcd::getInstance().setDisplayText(&a, &b);
     
   }
 }
@@ -540,7 +614,7 @@ void CWaterPumpControl::readInputButtons()
     if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
     {
       Serial.println("left pressed in automode");
-      CWaterPumpControl::getInstance().m_pLcd->turnOnBacklightAndTurnOffLater();
+      Clcd::getInstance().turnOnBacklightAndTurnOffLater();
     }
     //Middle Button pressed
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
@@ -567,7 +641,7 @@ void CWaterPumpControl::readInputButtons()
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
     {
       Serial.println("middle pressed in MANUELON");
-      CWaterPumpControl::getInstance().m_pLcd->turnOnBacklightAndTurnOffLater();
+      Clcd::getInstance().turnOnBacklightAndTurnOffLater();
     }
     //Right Button pressed
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
@@ -594,7 +668,7 @@ void CWaterPumpControl::readInputButtons()
     else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
     {
       Serial.println("right pressed in MANUELOFF");
-      CWaterPumpControl::getInstance().m_pLcd->turnOnBacklightAndTurnOffLater();
+      Clcd::getInstance().turnOnBacklightAndTurnOffLater();
     }
   }
   else
@@ -647,7 +721,7 @@ void CWaterPumpControl::changeModeToManuelOn()
 
   this->getWaterPump()->setWaterPumpMode(MANUELON);
   this->m_pWaterpump->TurnOnWaterPump();
-  CWaterPumpControl::m_pLcd->showManualON();
+  Clcd::getInstance().showManualON();
 }
 void CWaterPumpControl::changeModeToManuelOff()
 {
@@ -657,7 +731,7 @@ void CWaterPumpControl::changeModeToManuelOff()
 
   this->getWaterPump()->setWaterPumpMode(MANUELOFF);
   this->m_pWaterpump->TurnOffWaterPump();
-  CWaterPumpControl::m_pLcd->showManualOFF();
+  Clcd::getInstance().showManualOFF();
 }
 
 void CWaterPumpControl::setTurnOnDelay(int _startDelayInMinutes)
@@ -673,7 +747,7 @@ void CWaterPumpControl::setTurnOnDelay(int _startDelayInMinutes)
   String min(" min");
   outputLcdLine2 += min;
 
-  this->m_pLcd->setDisplayText(&outputLcdLine1, &outputLcdLine2);
+  Clcd::getInstance().setDisplayText(&outputLcdLine1, &outputLcdLine2);
 }
 
 bool CWaterPumpControl::isWaterInFountain()
@@ -691,51 +765,128 @@ e_FountainStatus CWaterPumpControl::getFountainStatus()
   return S_FountainStatus;
 }
 
+// void CWaterPumpControl::readIsWaterInFountain()
+// {
+
+//   Serial.println("readIsWaterInFountain");
+
+//   int WaterLimitValue = CWaterPumpControl::getInstance().getUltraSonicSensor()->getDistanceInCM();
+//   bool WaterMessureOk = false;
+
+//   if (WaterLimitValue > 0)
+//   {
+//     CWaterPumpControl::S_WaterLimitMessure = WaterLimitValue;
+    
+//     Serial.print(S_WaterLimitMessure);
+//     Serial.println("cm");
+
+//     Serial.print("Max:");
+//     Serial.print(S_WaterLimitEmptyBorder);
+//     Serial.print(", Min:");
+//     Serial.println(S_WaterLimitFullBorder);
+
+//       if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure <= CWaterPumpControl::S_WaterLimitFullBorder)
+//       {
+//         CWaterPumpControl::S_FountainStatus = FILLED;
+//         Serial.println("FILLED!");
+//         return;
+//       }
+//       else if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitFullBorder)
+//       {
+//         CWaterPumpControl::S_FountainStatus = OVEREMPTY;
+//         Serial.println("OVEREMPTY!");
+//         return;
+//       }
+//       else if (S_WaterLimitMessure == S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
+//       {
+//         CWaterPumpControl::S_FountainStatus = EMPTY;
+//         Serial.println("EMPTY!");
+//         return;
+//       }
+//       else if (S_WaterLimitMessure < S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
+//       {
+//         CWaterPumpControl::S_FountainStatus = OVERFILLED;
+//         Serial.println("OVERFILLED!");
+//         return;
+//       }
+//   }
+//   else
+//   {
+//     CWaterPumpControl::S_WaterLimitMessure = -1;
+//     CWaterPumpControl::S_FountainStatus = ERROR;
+//     Serial.println("EMPTY!");
+   
+//   }
+
+//   Serial.println("readIsWaterInFountain end");
+//   return;
+// }
+
+
 void CWaterPumpControl::readIsWaterInFountain()
 {
 
   Serial.println("readIsWaterInFountain");
 
-  CWaterPumpControl::S_WaterLimitMessure = CWaterPumpControl::getInstance().getUltraSonicSensor()->getDistanceInCM();
+  // int WaterLimitValue = CWaterPumpControl::getInstance().getUltraSonicSensor()->getDistanceInCM();
+  int WaterLimitValue = CWaterPumpControl::getInstance().getSensorAdafruit_VL53L0X()->getMiddleValue();
 
-  
-  Serial.print(S_WaterLimitMessure);
-  Serial.println("cm");
+  if (WaterLimitValue > 0)
+  {
+    CWaterPumpControl::S_WaterLimitMessure = WaterLimitValue;
+#ifdef debug
+    Serial.print(S_WaterLimitMessure);
+    Serial.println("cm");
 
     Serial.print("Max:");
     Serial.print(S_WaterLimitEmptyBorder);
     Serial.print(", Min:");
     Serial.println(S_WaterLimitFullBorder);
+#endif
 
-  if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure <= CWaterPumpControl::S_WaterLimitFullBorder)
-  {
-    CWaterPumpControl::S_FountainStatus = FILLED;
-    Serial.println("FILLED!");
-    return;
+    if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure <= CWaterPumpControl::S_WaterLimitFullBorder)
+    {
+      CWaterPumpControl::S_FountainStatus = FILLED;
+#ifdef debug
+        Serial.println("FILLED!");
+#endif
+        return;
+      }
+      else if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitFullBorder)
+      {
+        CWaterPumpControl::S_FountainStatus = OVEREMPTY;
+#ifdef debug
+        Serial.println("OVEREMPTY!");
+#endif
+        return;
+      }
+      else if (S_WaterLimitMessure == S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
+      {
+        CWaterPumpControl::S_FountainStatus = EMPTY;
+#ifdef debug
+        Serial.println("EMPTY!");
+#endif
+        return;
+      }
+      else if (S_WaterLimitMessure < S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
+      {
+        CWaterPumpControl::S_FountainStatus = OVERFILLED;
+#ifdef debug
+        Serial.println("OVERFILLED!");
+#endif
+        return;
+      }
   }
-  else if (CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitEmptyBorder && CWaterPumpControl::S_WaterLimitMessure > CWaterPumpControl::S_WaterLimitFullBorder)
+  else
   {
-     CWaterPumpControl::S_FountainStatus = OVEREMPTY;
-     Serial.println("OVEREMPTY!");
-    return;
-  }
-  else if (S_WaterLimitMessure == S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
-  {
-    CWaterPumpControl::S_FountainStatus = EMPTY;
+    CWaterPumpControl::S_WaterLimitMessure = -1;
+    CWaterPumpControl::S_FountainStatus = ERROR;
     Serial.println("EMPTY!");
-    return;
-  }
-  else if(S_WaterLimitMessure < S_WaterLimitEmptyBorder && S_WaterLimitMessure < S_WaterLimitFullBorder)
-  {
-    CWaterPumpControl::S_FountainStatus = OVERFILLED;
-    Serial.println("OVERFILLED!");
-    return;
+   
   }
 
-
-Serial.println("readIsWaterInFountain end");
-
-
+  Serial.println("readIsWaterInFountain end");
+  return;
 }
 
 
@@ -787,23 +938,35 @@ Ticker* CWaterPumpControl::getTemperatureTicker()
    return &this->m_CallTickerTemperatureMessure;
 }
 
+Ticker* CWaterPumpControl::getCallTickerSensorAdafruit_VL53L0X()
+{
+  return &this->m_CallTickerSensorAdafruit_VL53L0X;
+}
+
 
 void CWaterPumpControl::attachTimerToReadFountainFilled()
 {
-  CWaterPumpControl::getInstance().getCallTickeReadFountainFilled()->attach_ms(2000, CWaterPumpControl::readIsWaterInFountain );
+  CWaterPumpControl::getInstance().getCallTickeReadFountainFilled()->attach_ms(100, CWaterPumpControl::readIsWaterInFountain );
 }
-
+void CWaterPumpControl::attachTimerToSensorAdafruit_VL53L0X()
+{
+  CWaterPumpControl::getInstance().getCallTickerSensorAdafruit_VL53L0X()->attach_ms(100, CSensorAdafruit_VL53L0X::doMeasure);
+}
 
 TemperatureSensor* CWaterPumpControl::getTemperatureSensors()
 {
   return &this->m_TemperatureSensors;
 }
 
-CUltraSonicSensor* CWaterPumpControl::getUltraSonicSensor()
-{
-  return &this->m_UltraSonicSensor;
-}
+// CUltraSonicSensor* CWaterPumpControl::getUltraSonicSensor()
+// {
+//   return &this->m_UltraSonicSensor;
+// }
 
+CSensorAdafruit_VL53L0X* CWaterPumpControl::getSensorAdafruit_VL53L0X()
+{
+  return &this->m_SensorAdafruit_VL53L0X;
+}
 
 int CWaterPumpControl::getWaterLimitMessure()
 {

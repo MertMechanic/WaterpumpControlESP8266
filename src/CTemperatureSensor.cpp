@@ -32,7 +32,6 @@ void TemperatureSensor::init(int _countOfSensors, int _BusInputPIN)
         m_DS18B20.begin();
         Serial.print("Count of connected Sensors: ");
         Serial.println(m_DS18B20.getDeviceCount(), DEC);
-        Serial.println();
 
         for (byte i = 0; i < m_DS18B20.getDeviceCount(); i++)
         {
@@ -63,7 +62,7 @@ void TemperatureSensor::init(int _countOfSensors, int _BusInputPIN)
             }
         }
     }
-    Serial.println("Init finished");
+    Serial.println("Tempsensor Init finished");
 }
 
 /**

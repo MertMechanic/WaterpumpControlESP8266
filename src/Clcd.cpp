@@ -13,15 +13,18 @@ Clcd::~Clcd()
 }
 
 
-void Clcd::init(__uint8_t _sda_pin, __uint8_t _scl_pin)
+void Clcd::init()
 {
     this->m_DisplayFlag = 0;
     this->m_DisplayStatus = NONEDISPLAY_STATUS;
 
     m_pLcd = new LiquidCrystal_I2C(0x27, this->m_CountOfSignsPerRows, this->m_CountOfRows);
 
-    // Wire.begin(PIN_SDA, PIN_SCL); //SDA //SCL
-    Wire.begin(_sda_pin, _scl_pin); //SDA //SCL
+    // If Multiple I2C Devices - Init it in General! 
+    // REMOVED START
+    // Wire.begin(PIN_SDA, PIN_SCL); //SDA //SCL        
+    // Wire.begin(_sda_pin, _scl_pin); //SDA //SCL
+    // REMOVED END
 
     m_pLcd->init();
     m_pLcd->backlight();
@@ -41,6 +44,7 @@ void Clcd::init(__uint8_t _sda_pin, __uint8_t _scl_pin)
     this->m_Line[0] = "                "; //Should be 16 chars
     this->m_Line[1] = "                ";
 }
+
 
 
 
@@ -93,6 +97,15 @@ void Clcd::setLine(String *_pText, int _lineNumber)
         // // this->m_Line[_lineNumber] = *_pText;
     }
 }
+
+
+
+void Clcd::setLine(const char *_pText, int _lineNumber)
+{
+    String str(_pText);
+    setLine(&str, _lineNumber);
+}
+
 
 void Clcd::setDisplayText(String *_pTextA, String *_pTextB)
 {
