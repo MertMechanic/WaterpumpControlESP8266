@@ -17,4 +17,9 @@ public:
     ~CWaterPumpControlAdditionalWebpages();
     void setupAdditionalWebPageNormalMode() override;
     void setupAdditionalWebpagesAPMode() override;
+
+
+
+    static String m_html;
+    static String m_JsData;
 };

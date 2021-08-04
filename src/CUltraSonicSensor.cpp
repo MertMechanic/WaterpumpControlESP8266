@@ -42,5 +42,5 @@ int CUltraSonicSensor::initUltraSonicSensorPins(int _triggerPin, int _echoPin)
   pinMode(S_TriggerPin, OUTPUT);
   pinMode(S_EchoPin, INPUT);
 
-  
+  return 0;
 }

@@ -21,19 +21,25 @@ CSensorAdafruit_VL53L0X::~CSensorAdafruit_VL53L0X()
 void CSensorAdafruit_VL53L0X::initLongRange()
 {
 
-    m_MeasureStatusOK = true;
-
 #ifdef debug
     Serial.println("Adafruit_VL53L0X Init Long Range Called");
 #endif
-
-    if (!CSensorAdafruit_VL53L0X::m_lox.begin())
+    bool ok = false;
+    
+    while (ok == false /* condition */)
     {
-        Serial.println(F("Failed to boot VL53L0X"));
-        Serial.println(F("Workaround - reconnect VCC and GND!!!"));
-        while (1)
-            ;
+        
+        ok = CSensorAdafruit_VL53L0X::m_lox.begin();
+        if(!ok)
+        {
+            Serial.println(F("Failed to boot VL53L0X"));
+            Serial.println(F("Workaround - reconnect VCC and GND!!!"));
+            // while (1)
+            //     ;
+            delay(500);
+        }
     }
+
     CSensorAdafruit_VL53L0X::m_lox.configSensor(Adafruit_VL53L0X::VL53L0X_SENSE_LONG_RANGE);
     CSensorAdafruit_VL53L0X::initMiddleValueArray();
 }
@@ -59,11 +65,14 @@ bool CSensorAdafruit_VL53L0X::doMeasure()
                 CSensorAdafruit_VL53L0X::addNewValueToMiddleValueArray();
             }
         }
-
+        
+        //** Counter of Failed Meassures reached - Clear all and reset
         if (CSensorAdafruit_VL53L0X::m_counterOfFailedMessures == CSensorAdafruit_VL53L0X::s_maxFailedMessures)
         {
             CSensorAdafruit_VL53L0X::m_MeasureStatusOK = false;
+            CSensorAdafruit_VL53L0X::m_counterOfFailedMessures = 0;
             CSensorAdafruit_VL53L0X::initMiddleValueArray();
+            CSensorAdafruit_VL53L0X::m_CurrentBufferPosition = 0;
         }
 
         return true;

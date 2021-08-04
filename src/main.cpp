@@ -1,4 +1,3 @@
-
 //**Waterpump Control Main Method START**//
 
 /**
@@ -13,11 +12,7 @@
  */
 #include "Defines.h"
 #include <Arduino.h>
-#include "Clcd.h"
 #include "CWaterPumpControl.h"
-
-#include <iostream>
-#include <string>
 
 //Emergency Routine Setup START
 
@@ -32,9 +27,16 @@ int watchdogCount = 0;
 void ISREmergencyRestartWatchDog()
 {
   watchdogCount++;
-  if (watchdogCount == 20)
+
+  if (watchdogCount > 1)
   {
-    // Serial.println("Watchdog bites!");
+     Serial.print("Watchdog Count: ");
+     Serial.println(watchdogCount);
+  }
+
+  if (watchdogCount == 10)
+  {
+    Serial.println("Watchdog bites!");
     ESP.reset();
   }
   
@@ -48,10 +50,10 @@ void setup()
 {
   //EmergencyTicker - attach
   //if the run() loop not quitting the watchdogcount gets increased
-  //after 5 seconds - it will restart the esp
+  //after 20 seconds - it will restart the esp
 
   CWaterPumpControl::getInstance().init();
-  emergencyTicker.attach(1,ISREmergencyRestartWatchDog);
+  emergencyTicker.attach(2,ISREmergencyRestartWatchDog);
 }
 
 /**

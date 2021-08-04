@@ -1,141 +1,411 @@
-
-R"=====(
 <!DOCTYPE html>
-<html lang=en>
-<head>
-<title>Wallway Waterpump Control V1.0 by Mert Mechanic</title>
-<meta charset=utf-8>
-<meta name=viewport content="width=device-width, initial-scale=1">
-<link rel=stylesheet href=https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css>
-<link rel=stylesheet href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-<script src=https://ajax.googleapis.com/ajax/libs/jquery/4.4.1/jquery.min.js></script>
-<script src=https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js></script>
-<style>.hide{display:none}.show{display:block}.statusbox{border:2px solid black;border-radius:30px;box-shadow:0 4px 8px 0 rgba(0,0,0,0.9),0 6px 20px 0 rgba(0,0,0,0.19)}.p-05{padding:.5rem!important}#myProgress{width:100%;background-color:grey;margin-buttom:10px;border-style:solid;border-radius:10px}#myBar{width:0;height:30px;background-color:#3fa5ff;text-align:center;line-height:30px;color:white;border-radius:10px;transition:width 3.0s}</style>
-</head>
-<body>
-<div class=container-fluid>
-<div class=row>
-<div class="form-inline col-sm-12 p-4">
-<h3>
-Wallway Waterpump Control V1.0 by Mert Mechanic
-</h3>
-<h2 class="status col-sm-12 text-center statusbox" id=pumpstatus style=font-size:4rem;margin-bottom:2rem>
-status
-</h2>
-<div id=myProgress>
-<div id=myBar>0%</div>
-</div>
-<table class="table table-striped">
-<thead>
-<tr>
-<th scope=col>Information</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>WasserMessung &#8594; :</td>
-<td><div id=waterlimitdistance class=.show>___</div></td>
-</tr>
-<tr>
-<td>WasserMessung % :</td>
-<td><div id=waterlimitdistancepercent class=.show>___</div></td>
-</tr>
-<tr>
-<td>Innen Temperatur:</td>
-<td><div id=temperature1 class=.show>___</div></td>
-</tr>
-<tr>
-<td>Außen Temperatur:</td>
-<td><div id=temperature2 class=.show>___</div></td>
-</tr>
-<tr>
-<td>Wasserpume startet:</td>
-<td><div id=restarttimestr>___</div></td>
-</tr>
-<tr>
-<td>Einschalte Intervall ist:</td>
-<td><div id=startdelay>___</div></td>
-</tr>
-<tr>
-<td>WasserMessung &#8593; Voll:</td>
-<td><div id=waterlimitmaxborder>___</div></td>
-</tr>
-<tr>
-<td>WasserMessung &#8595; Leer:</td>
-<td><div id=waterlimitminborder>___</div></td>
-</tr>
-</div>
-<div class=col-sm-12>
-<table class="table table-striped table-dark">
-<thead>
-<tr>
-<th>History</th>
-</tr>
-<tr>
-<th scope=col>#</th>
-<th scope=col>Run</th>
-<th scope=col>Stop</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<th scope=row>1</th>
-<td id=run0>run0</td>
-<td id=stop0>stop0</td>
-</tr>
-<tr>
-<th scope=row>2</th>
-<td id=run1>run1</td>
-<td id=stop1>stop1</td>
-</tr>
-<tr>
-<th scope=row>3</th>
-<td id=run2>run2</td>
-<td id=stop2>stop2</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="col-sm-12 form-inline">
-<form class="form-inline col-sm-12 p-05">
-<input id=startdelayinput class="form-control mr-sm-2 col-sm-2" type=input placeholder=Einschaltverzoegerung style=width:unset>
-<div class=col-sm-6>min</div>
-<button class="btn btn-primary my-2 my-sm-0 col-sm-2" type=button onclick=sendDatastartdelayinminutes()>
-Setzen
-</button>
-</form>
-<form class="form-inline col-sm-12 p-05">
-<input id=waterlimitmax class="form-control mr-sm-2 col-sm-2" type=input placeholder=Voll style=width:unset>
-<div class=col-sm-6></div>
-<button class="btn btn-primary my-2 my-sm-0 col-sm-2" type=button onclick=sendWaterLimitMax()>
-Setzen
-</button>
-</form>
-<form class="form-inline col-sm-12 p-05">
-<input id=waterlimitmin class="form-control mr-sm-2 col-sm-2" type=input placeholder=Leer style=width:unset>
-<div class=col-sm-6></div>
-<button class="btn btn-primary my-2 my-sm-0 col-sm-2" type=button onclick=sendWaterLimitMin()>
-Setzen
-</button>
-</form>
-<div class=col-sm-12> </div>
-<div class="btn-group btn-group-lg col-sm-12 p-4 role="group">
-<button id=autoactive class="btn btn-secondary ###LABELAUTOACTIVE###" type=button onclick=sendModeData(0)>
-AUTO
-</button>
-<button id=manuelon class="btn btn-secondary ###LABELMANUELONACTIVE###" type=button onclick=sendModeData(1)>
-Manuell AN
-</button>
-<button id=manueloff class="btn btn-secondary ###LABELMANUELOFFACTIVE###" type=button onclick=sendModeData(2)>
-Manuell AUS
-</button>
-</div><div class=progress>
-<div class="progress-bar w-75">
-</div>
-</div>
-</div>
-</div>
-</body>
-<script>var statuspump=false;function sendDatastartdelayinminutes(){var b=document.getElementById("startdelayinput").value;var c={startdelayinminutes:b};var d=new XMLHttpRequest();var a="startdelay";d.onreadystatechange=function(e){if(this.readyState==4&&this.status==200){}};d.open("POST",a,true);d.send(JSON.stringify(c))}function sendWaterLimitMax(){var c=document.getElementById("waterlimitmax").value;var b={waterlimitmax:c};var d=new XMLHttpRequest();var a="waterlimitmax";d.onreadystatechange=function(e){if(this.readyState==4&&this.status==200){}};d.open("POST",a,true);d.send(JSON.stringify(b))}function sendWaterLimitMin(){var a=document.getElementById("waterlimitmin").value;var c={waterlimitmin:a};var d=new XMLHttpRequest();var b="waterlimitmin";d.onreadystatechange=function(e){if(this.readyState==4&&this.status==200){}};d.open("POST",b,true);d.send(JSON.stringify(c))}function modeListener(){var b=new XMLHttpRequest();var a="mode";b.onreadystatechange=function(c){if(this.readyState==4&&this.status==200){switch(this.responseText){case"AUTO":document.getElementById("autoactive").classList.add("active");document.getElementById("manuelon").classList.remove("active");document.getElementById("manueloff").classList.remove("active");break;case"MANUELON":document.getElementById("autoactive").classList.remove("active");document.getElementById("manuelon").classList.add("active");document.getElementById("manueloff").classList.remove("active");break;case"MANUELOFF":document.getElementById("autoactive").classList.remove("active");document.getElementById("manuelon").classList.remove("active");document.getElementById("manueloff").classList.add("active");break;default:}}};b.open("GET",a,true);b.send()}function fetchData(){var b=new XMLHttpRequest();var a="fetchdata";b.onreadystatechange=function(w){if(this.readyState==4&&this.status==200){console.log(this.responseText);var A=JSON.parse(this.responseText);var m=A.mode;var n=A.startdelay;var s=A.runtime0;var z=A.runtime1;var c=A.runtime2;var v=A.stoptime0;var C=A.stoptime1;var g=A.stoptime2;var j=A.restarttimestr;var f=A.temperature1;var e=A.temperature2;var l=A.waterlimitdistance;var d=A.waterlimitmaxborder;var u=A.waterlimitminborder;switch(m){case"AUTO":document.getElementById("autoactive").classList.add("active");document.getElementById("manuelon").classList.remove("active");document.getElementById("manueloff").classList.remove("active");break;case"MANUELON":document.getElementById("autoactive").classList.remove("active");document.getElementById("manuelon").classList.add("active");document.getElementById("manueloff").classList.remove("active");break;case"MANUELOFF":document.getElementById("autoactive").classList.remove("active");document.getElementById("manuelon").classList.remove("active");document.getElementById("manueloff").classList.add("active");break;default:}document.getElementById("startdelay").innerText=n+" min";document.getElementById("run0").innerText=s;document.getElementById("run1").innerText=z;document.getElementById("run2").innerText=c;document.getElementById("stop0").innerText=v;document.getElementById("stop1").innerText=C;document.getElementById("stop2").innerText=g;document.getElementById("restarttimestr").innerText=j;document.getElementById("temperature1").innerText=f;document.getElementById("temperature2").innerText=e;document.getElementById("waterlimitdistance").innerText=l;document.getElementById("waterlimitdistance").classList.remove("animate__animated");document.getElementById("waterlimitdistance").classList.remove("animate__pulse");document.getElementById("waterlimitdistance").classList.remove("show");document.getElementById("waterlimitdistance").classList.add("hide");document.getElementById("waterlimitdistance").classList.offsetWidth;setTimeout(function(){document.getElementById("waterlimitdistance").classList.add("animate__animated")},1);setTimeout(function(){document.getElementById("waterlimitdistance").classList.add("animate__pulse")},1);setTimeout(function(){document.getElementById("waterlimitdistance").classList.remove("hide")},1);setTimeout(function(){document.getElementById("waterlimitdistance").classList.add("show")},100);document.getElementById("waterlimitminborder").innerText=u;document.getElementById("waterlimitmaxborder").innerText=d;var t=d;var q=u;var y=t-q;var o=l;waterlimitpercent=(o-q)/(t-q)*100;waterlimitpercent.toFixed(2);var i=Number(waterlimitpercent);var h=i.toFixed(2);var x=Number(h);document.getElementById("waterlimitdistancepercent").innerText=x+" %";document.getElementById("waterlimitdistancepercent").classList.remove("animate__animated");document.getElementById("waterlimitdistancepercent").classList.remove("animate__pulse");document.getElementById("waterlimitdistancepercent").classList.remove("show");document.getElementById("waterlimitdistancepercent").classList.add("hide");document.getElementById("waterlimitdistancepercent").classList.offsetWidth;setTimeout(function(){document.getElementById("waterlimitdistancepercent").classList.add("animate__animated")},1);setTimeout(function(){document.getElementById("waterlimitdistancepercent").classList.add("animate__pulse")},1);setTimeout(function(){document.getElementById("waterlimitdistancepercent").classList.remove("hide")},1);setTimeout(function(){document.getElementById("waterlimitdistancepercent").classList.add("show")},100);var r=parseFloat(x);var B=parseFloat(0);var k=parseFloat(100);if(r<=k&&r>=B){document.getElementById("myBar").innerText=x+"%";document.getElementById("myBar").style.width=x+"%";document.getElementById("myBar").style.backgroundColor="#3FA5FF";document.getElementById("myProgress").style.backgroundColor="grey"}else{if(r>k){document.getElementById("myBar").innerText=x+"%";document.getElementById("myBar").style.width=100+"%";document.getElementById("myBar").style.backgroundColor="#FF3F3F";document.getElementById("myProgress").style.backgroundColor="grey"}else{if(r<k&&r<B){document.getElementById("myBar").innerText=x+"%";document.getElementById("myBar").style.width=0+"%";document.getElementById("myProgress").style.backgroundColor="red"}else{}}}document.getElementById("temperature1").classList.remove("animate__animated");document.getElementById("temperature1").classList.remove("animate__pulse");document.getElementById("temperature1").classList.remove("show");document.getElementById("temperature1").classList.add("hide");document.getElementById("temperature1").classList.offsetWidth;setTimeout(function(){document.getElementById("temperature1").classList.add("animate__animated")},1);setTimeout(function(){document.getElementById("temperature1").classList.add("animate__pulse")},1);setTimeout(function(){document.getElementById("temperature1").classList.remove("hide")},1);setTimeout(function(){document.getElementById("temperature1").classList.add("show")},1);document.getElementById("temperature2").classList.remove("animate__animated");document.getElementById("temperature2").classList.remove("animate__pulse");document.getElementById("temperature2").classList.remove("show");document.getElementById("temperature2").classList.add("hide");document.getElementById("temperature2").classList.offsetWidth;setTimeout(function(){document.getElementById("temperature2").classList.add("animate__animated")},1);setTimeout(function(){document.getElementById("temperature2").classList.add("animate__pulse")},1);setTimeout(function(){document.getElementById("temperature2").classList.remove("hide")},1);setTimeout(function(){document.getElementById("temperature2").classList.add("show")},100);var p=A.status;if(p!=statuspump){statuspump=p;document.getElementById("pumpstatus").classList.remove("animate__animated");document.getElementById("pumpstatus").classList.remove("animate__flash");setTimeout(function(){document.getElementById("pumpstatus").classList.remove("hide")},1);setTimeout(function(){document.getElementById("pumpstatus").classList.add("show")},1);setTimeout(function(){document.getElementById("pumpstatus").classList.add("animate__animated")},1);setTimeout(function(){document.getElementById("pumpstatus").classList.add("animate__flash")},100)}if(p==true){document.getElementById("pumpstatus").innerText="(◉⩊◉)";document.getElementById("pumpstatus").classList.remove("bg-danger");document.getElementById("pumpstatus").classList.add("bg-success")}else{document.getElementById("pumpstatus").innerText="(◉ ︹ ◉)";document.getElementById("pumpstatus").classList.remove("bg-success");document.getElementById("pumpstatus").classList.add("bg-danger")}}};b.open("GET",a,true);b.send()}function sendModeData(d){var b={mode:d};var c=new XMLHttpRequest();var a="/changemode";c.onreadystatechange=function(e){if(this.onreadystatechange==4&&this.status==200){}};c.open("POST",a,true);c.send(JSON.stringify(b));fetchData()}document.addEventListener("DOMContentLoaded",fetchData,false);setInterval(fetchData,5000);</script>
+<html lang="en">
+   <head>
+      <title>Wallway Waterpump Control V1.0 by Mert Mechanic</title>
+      <meta charset="utf-8">
+      <meta name=viewport content="width=device-width, initial-scale=1">
+      <link rel=stylesheet href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+      <link rel=stylesheet href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/4.4.1/jquery.min.js"></script><script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+      <style>.hide{display:none}.show{display:block}.statusbox{border:2px solid black;border-radius:30px;box-shadow:0 4px 8px 0 rgba(0,0,0,0.9),0 6px 20px 0 rgba(0,0,0,0.19)}.p-05{padding:.5rem!important}#myProgress{width:100%;background-color:grey;margin-buttom:10px;border-style:solid;border-radius:10px}#myBar{width:0;height:30px;background-color:#3fa5ff;text-align:center;line-height:30px;color:white;border-radius:10px;transition:width 3.0s}</style>
+   </head>
+   <body>
+      <div class="container-fluid">
+      <div class="row">
+         <div class="form-inline col-sm-12 p-4">
+            <h3>Wallway Waterpump Control V1.0 by Mert Mechanic</h3>
+            <h2 class="status col-sm-12 text-center statusbox" id="pumpstatus" style="font-size:4rem;margin-bottom:2rem">status</h2>
+            <div id="myProgress">
+               <div id="myBar">0%</div>
+            </div>
+            <table class="table table-striped">
+            <thead>
+               <tr>
+                  <th scope="col">Information</th>
+               </tr>
+            </thead>
+            <tbody>
+               <tr>
+                  <td>WasserMessung &#8594; :</td>
+                  <td>
+                     <div id="waterlimitdistance" class="show">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>WasserMessung % :</td>
+                  <td>
+                     <div id="waterlimitdistancepercent" class="show">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>Innen Temperatur:</td>
+                  <td>
+                     <div id="temperature1" class="show">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>Außen Temperatur:</td>
+                  <td>
+                     <div id="temperature2" class="show">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>Wasserpume startet:</td>
+                  <td>
+                     <div id="restarttimestr">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>Einschalte Intervall ist:</td>
+                  <td>
+                     <div id="startdelay">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>WasserMessung &#8593; Voll:</td>
+                  <td>
+                     <div id="waterlimitmaxborder">___</div>
+                  </td>
+               </tr>
+               <tr>
+                  <td>WasserMessung &#8595; Leer:</td>
+                  <td>
+                     <div id="waterlimitminborder">___</div>
+                  </td>
+               </tr>
+         </div>
+         <div class="col-sm-12">
+         <table class="table table-striped table-dark">
+         <thead>
+         <tr>
+         <th>History</th>
+         </tr>
+         <tr>
+         <th scope="col">#</th>
+         <th scope="col">Run</th>
+         <th scope="col">Stop</th>
+         </tr>
+         </thead>
+         
+         <tbody>
+         <tr>
+         <th scope="row">1</th>
+         <td id="run0">run0</td>
+         <td id="stop0">stop0</td>
+         </tr>
+         <tr>
+         <th scope="row">2</th>
+         <td id="run1">run1</td>
+         <td id="stop1">stop1</td>
+         </tr>
+         <tr>
+         <th scope="row">3</th>
+         <td id="run2">run2</td>
+         <td id="stop2">stop2</td>
+         </tr>
+         </tbody>
+         </table>
+         </div>
+         <div class="col-sm-12 form-inline">
+         <form class="form-inline col-sm-12 p-05">
+         <input id="startdelayinput" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Einschaltverzoegerung" style="width:unset">
+         <div class="col-sm-6">min</div>
+         <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendDatastartdelayinminutes()>Setzen</button>
+         </form>
+         <form class="form-inline col-sm-12 p-05">
+         <input id="waterlimitmax" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Voll" style="width:unset">
+         <div class="col-sm-6"></div>
+         
+         <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendWaterLimitMax()>Setzen</button>
+         </form><form class="form-inline col-sm-12 p-05">
+         <input id="waterlimitmin" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Leer" style="width:unset"><div class="col-sm-6"></div>
+         <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendWaterLimitMin()>Setzen</button></form><div class="col-sm-12"> </div>
+         <div class="btn-group btn-group-lg col-sm-12 p-4" role="group">
+         <button id="autoactive" class="btn btn-secondary ###LABELAUTOACTIVE###" type="button" onclick=sendModeData(0)>AUTO</button>
+         <button id="manuelon" class="btn btn-secondary ###LABELMANUELONACTIVE###" type="button" onclick=sendModeData(1)>Manuell AN</button>
+         <button id="manueloff" class="btn btn-secondary ###LABELMANUELOFFACTIVE###" type="button" onclick=sendModeData(2)>Manuell AUS</button>
+         </div>
+         <div class="progress">
+         <div class="progress-bar w-75">
+         </div>
+         </div>
+         </div>
+      </div>
+   </body>
+<script>
+    var statuspump = false;
+
+function sendDatastartdelayinminutes() {
+    var b = document.getElementById("startdelayinput").value;
+    var c = {
+        startdelayinminutes: b
+    };
+    var d = new XMLHttpRequest();
+    var a = "startdelay";
+    d.onreadystatechange = function(e) {
+        if (this.readyState == 4 && this.status == 200) {}
+    };
+    d.open("POST", a, true);
+    d.send(JSON.stringify(c))
+}
+
+function sendWaterLimitMax() {
+    var c = document.getElementById("waterlimitmax").value;
+    var b = {
+        waterlimitmax: c
+    };
+    var d = new XMLHttpRequest();
+    var a = "waterlimitmax";
+    d.onreadystatechange = function(e) {
+        if (this.readyState == 4 && this.status == 200) {}
+    };
+    d.open("POST", a, true);
+    d.send(JSON.stringify(b))
+}
+
+function sendWaterLimitMin() {
+    var a = document.getElementById("waterlimitmin").value;
+    var c = {
+        waterlimitmin: a
+    };
+    var d = new XMLHttpRequest();
+    var b = "waterlimitmin";
+    d.onreadystatechange = function(e) {
+        if (this.readyState == 4 && this.status == 200) {}
+    };
+    d.open("POST", b, true);
+    d.send(JSON.stringify(c))
+}
+
+function modeListener() {
+    var b = new XMLHttpRequest();
+    var a = "mode";
+    b.onreadystatechange = function(c) {
+        if (this.readyState == 4 && this.status == 200) {
+            switch (this.responseText) {
+                case "AUTO":
+                    document.getElementById("autoactive").classList.add("active");
+                    document.getElementById("manuelon").classList.remove("active");
+                    document.getElementById("manueloff").classList.remove("active");
+                    break;
+                case "MANUELON":
+                    document.getElementById("autoactive").classList.remove("active");
+                    document.getElementById("manuelon").classList.add("active");
+                    document.getElementById("manueloff").classList.remove("active");
+                    break;
+                case "MANUELOFF":
+                    document.getElementById("autoactive").classList.remove("active");
+                    document.getElementById("manuelon").classList.remove("active");
+                    document.getElementById("manueloff").classList.add("active");
+                    break;
+                default:
+            }
+        }
+    };
+    b.open("GET", a, true);
+    b.send()
+}
+
+function fetchData() {
+    var b = new XMLHttpRequest();
+    var a = "fetchdata";
+    b.onreadystatechange = function(w) {
+        if (this.readyState == 4 && this.status == 200) {
+            console.log(this.responseText);
+            var A = JSON.parse(this.responseText);
+            var m = A.mode;
+            var n = A.startdelay;
+            var s = A.runtime0;
+            var z = A.runtime1;
+            var c = A.runtime2;
+            var v = A.stoptime0;
+            var C = A.stoptime1;
+            var g = A.stoptime2;
+            var j = A.restarttimestr;
+            var f = A.temperature1;
+            var e = A.temperature2;
+            var l = A.waterlimitdistance;
+            var d = A.waterlimitmaxborder;
+            var u = A.waterlimitminborder;
+            switch (m) {
+                case "AUTO":
+                    document.getElementById("autoactive").classList.add("active");
+                    document.getElementById("manuelon").classList.remove("active");
+                    document.getElementById("manueloff").classList.remove("active");
+                    break;
+                case "MANUELON":
+                    document.getElementById("autoactive").classList.remove("active");
+                    document.getElementById("manuelon").classList.add("active");
+                    document.getElementById("manueloff").classList.remove("active");
+                    break;
+                case "MANUELOFF":
+                    document.getElementById("autoactive").classList.remove("active");
+                    document.getElementById("manuelon").classList.remove("active");
+                    document.getElementById("manueloff").classList.add("active");
+                    break;
+                default:
+            }
+            document.getElementById("startdelay").innerText = n + " min";
+            document.getElementById("run0").innerText = s;
+            document.getElementById("run1").innerText = z;
+            document.getElementById("run2").innerText = c;
+            document.getElementById("stop0").innerText = v;
+            document.getElementById("stop1").innerText = C;
+            document.getElementById("stop2").innerText = g;
+            document.getElementById("restarttimestr").innerText = j;
+            document.getElementById("temperature1").innerText = f;
+            document.getElementById("temperature2").innerText = e;
+            document.getElementById("waterlimitdistance").innerText = l;
+            document.getElementById("waterlimitdistance").classList.remove("animate__animated");
+            document.getElementById("waterlimitdistance").classList.remove("animate__pulse");
+            document.getElementById("waterlimitdistance").classList.remove("show");
+            document.getElementById("waterlimitdistance").classList.add("hide");
+            document.getElementById("waterlimitdistance").classList.offsetWidth;
+            setTimeout(function() {
+                document.getElementById("waterlimitdistance").classList.add("animate__animated")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("waterlimitdistance").classList.add("animate__pulse")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("waterlimitdistance").classList.remove("hide")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("waterlimitdistance").classList.add("show")
+            }, 100);
+            document.getElementById("waterlimitminborder").innerText = u;
+            document.getElementById("waterlimitmaxborder").innerText = d;
+            var t = d;
+            var q = u;
+            var y = t - q;
+            var o = l;
+            waterlimitpercent = (o - q) / (t - q) * 100;
+            waterlimitpercent.toFixed(2);
+            var i = Number(waterlimitpercent);
+            var h = i.toFixed(2);
+            var x = Number(h);
+            document.getElementById("waterlimitdistancepercent").innerText = x + " %";
+            document.getElementById("waterlimitdistancepercent").classList.remove("animate__animated");
+            document.getElementById("waterlimitdistancepercent").classList.remove("animate__pulse");
+            document.getElementById("waterlimitdistancepercent").classList.remove("show");
+            document.getElementById("waterlimitdistancepercent").classList.add("hide");
+            document.getElementById("waterlimitdistancepercent").classList.offsetWidth;
+            setTimeout(function() {
+                document.getElementById("waterlimitdistancepercent").classList.add("animate__animated")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("waterlimitdistancepercent").classList.add("animate__pulse")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("waterlimitdistancepercent").classList.remove("hide")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("waterlimitdistancepercent").classList.add("show")
+            }, 100);
+            var r = parseFloat(x);
+            var B = parseFloat(0);
+            var k = parseFloat(100);
+            if (r <= k && r >= B) {
+                document.getElementById("myBar").innerText = x + "%";
+                document.getElementById("myBar").style.width = x + "%";
+                document.getElementById("myBar").style.backgroundColor = "#3FA5FF";
+                document.getElementById("myProgress").style.backgroundColor = "grey"
+            } else {
+                if (r > k) {
+                    document.getElementById("myBar").innerText = x + "%";
+                    document.getElementById("myBar").style.width = 100 + "%";
+                    document.getElementById("myBar").style.backgroundColor = "#FF3F3F";
+                    document.getElementById("myProgress").style.backgroundColor = "grey";
+                } else {
+                    if (r < k && r < B) {
+                        document.getElementById("myBar").innerText = x + "%";
+                        document.getElementById("myBar").style.width = 0 + "%";
+                        document.getElementById("myProgress").style.backgroundColor = "red";
+                    } else {}
+                }
+            }
+            document.getElementById("temperature1").classList.remove("animate__animated");
+            document.getElementById("temperature1").classList.remove("animate__pulse");
+            document.getElementById("temperature1").classList.remove("show");
+            document.getElementById("temperature1").classList.add("hide");
+            document.getElementById("temperature1").classList.offsetWidth;
+            setTimeout(function() {
+                document.getElementById("temperature1").classList.add("animate__animated")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("temperature1").classList.add("animate__pulse")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("temperature1").classList.remove("hide")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("temperature1").classList.add("show")
+            }, 1);
+            document.getElementById("temperature2").classList.remove("animate__animated");
+            document.getElementById("temperature2").classList.remove("animate__pulse");
+            document.getElementById("temperature2").classList.remove("show");
+            document.getElementById("temperature2").classList.add("hide");
+            document.getElementById("temperature2").classList.offsetWidth;
+            setTimeout(function() {
+                document.getElementById("temperature2").classList.add("animate__animated")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("temperature2").classList.add("animate__pulse")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("temperature2").classList.remove("hide")
+            }, 1);
+            setTimeout(function() {
+                document.getElementById("temperature2").classList.add("show")
+            }, 100);
+            var p = A.status;
+            if (p != statuspump) {
+                statuspump = p;
+                document.getElementById("pumpstatus").classList.remove("animate__animated");
+                document.getElementById("pumpstatus").classList.remove("animate__flash");
+                setTimeout(function() {
+                    document.getElementById("pumpstatus").classList.remove("hide")
+                }, 1);
+                setTimeout(function() {
+                    document.getElementById("pumpstatus").classList.add("show")
+                }, 1);
+                setTimeout(function() {
+                    document.getElementById("pumpstatus").classList.add("animate__animated")
+                }, 1);
+                setTimeout(function() {
+                    document.getElementById("pumpstatus").classList.add("animate__flash")
+                }, 100)
+            }
+            if (p == true) {
+                document.getElementById("pumpstatus").innerText = "(◉⩊◉)";
+                document.getElementById("pumpstatus").classList.remove("bg-danger");
+                document.getElementById("pumpstatus").classList.add("bg-success");
+            } else {
+                document.getElementById("pumpstatus").innerText = "(◉ ︹ ◉)";
+                document.getElementById("pumpstatus").classList.remove("bg-success");
+                document.getElementById("pumpstatus").classList.add("bg-danger");
+            }
+        }
+    };
+    b.open("GET", a, true);
+    b.send()
+}
+
+function sendModeData(d) {
+    var b = {
+        mode: d
+    };
+    var c = new XMLHttpRequest();
+    var a = "/changemode";
+    c.onreadystatechange = function(e) {
+        if (this.onreadystatechange == 4 && this.status == 200) {}
+    };
+    c.open("POST", a, true);
+    c.send(JSON.stringify(b));
+    fetchData()
+}
+document.addEventListener("DOMContentLoaded", fetchData, false);
+setInterval(fetchData, 5000); 
+</script>
+
 </html>
-)====="

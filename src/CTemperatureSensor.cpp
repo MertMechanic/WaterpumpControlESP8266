@@ -29,8 +29,9 @@ void TemperatureSensor::init(int _countOfSensors, int _BusInputPIN)
 
     if (this->m_countOfSensors > 0)
     {
+        
         m_DS18B20.begin();
-        Serial.print("Count of connected Sensors: ");
+        Serial.print("Count of connected temperature sensors: ");
         Serial.println(m_DS18B20.getDeviceCount(), DEC);
 
         for (byte i = 0; i < m_DS18B20.getDeviceCount(); i++)
@@ -93,9 +94,10 @@ int TemperatureSensor::updateTemperature()
             }
             else
             {
+#ifdef debug
                 Serial.print(m_pValues[i]);
                 Serial.println(" 'C");
-                
+#endif
             }
         }
     }

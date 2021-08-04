@@ -1,7 +1,6 @@
 
 #include "CWaterPumpControlAdditionalWebpages.h"
 
-
 #include "ArduinoJson.h"
 #include "FS.h"
 
@@ -16,11 +15,13 @@
 #include "Clcd.h"
 #include "CTemperatureSensor.h"
 
-
-#define debug 1
+//#define debug 1
 
 //GLOBAL FUNCTIONS FOR WEBSERVER HTTP REQUESTS
 //
+
+String CWaterPumpControlAdditionalWebpages::m_html = "empty";
+String CWaterPumpControlAdditionalWebpages::m_JsData = "empty";
 
 CWaterPumpControlAdditionalWebpages::CWaterPumpControlAdditionalWebpages()
 {
@@ -29,116 +30,124 @@ CWaterPumpControlAdditionalWebpages::~CWaterPumpControlAdditionalWebpages()
 {
 }
 
-
-void handleFetchDataForDashBoardAdditional()
+/**
+ * @brief This method is for collecting all information and send prepare them to send all as json 
+ * 
+ */
+static void handleFetchDataForDashBoardAdditional()
 {
-    Serial.println("fetchData... Dashboard");
+    Serial.println("handleFetchDataForDashBoardAdditional()");
 
-    int StartDelay = CWaterPumpControl::getInstance().getWaterPump()->getTurnOnDelay();
     String waterPumpModeStr;
 
-    //getting current Pumpmode and generate a String
-    switch (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode())
-    {
-    case AUTO:
-        waterPumpModeStr = "AUTO";
-        break;
-    case MANUELON:
-        waterPumpModeStr = "MANUELON";
-        break;
-    case MANUELOFF:
-        waterPumpModeStr = "MANUELOFF";
-        break;
-    default:
-        break;
-    };
-    DynamicJsonBuffer jsonBuffer;
 
+
+    DynamicJsonBuffer jsonBuffer;
     // create an object
     JsonObject &jsonObject = jsonBuffer.createObject();
-    String tmp;
 
-    if (CWaterPumpControl::getInstance().isWaterInFountain())
-    {
-        jsonObject["status"] = true;
-    }
-    else
-    {
-        jsonObject["status"] = false;
-    }
 
-    jsonObject["fountainstatus"] = CWaterPumpControl::getInstance().getFountainStatus();
+    jsonObject["status"]         = CWaterPumpControl::getInstance().isWaterInFountain(); // false or true
+    String fountainStatusStr;
+    CWaterPumpControl::getInstance().getFountainStatusAsString(&fountainStatusStr);
+    jsonObject["fountainstatus"] = fountainStatusStr; // Empty, full, overempty, overful
 
-    if (CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::FILLED)
-        jsonObject["fountainstatus"] = "FILLED";
-    else if (CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::OVERFILLED)
-        jsonObject["fountainstatus"] = "OVERFILLED";
-    else if (CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::EMPTY)
-        jsonObject["fountainstatus"] = "EMPTY";
-    else if (CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::OVEREMPTY)
-        jsonObject["fountainstatus"] = "OVEREMPTY";
-    else if (CWaterPumpControl::getInstance().getFountainStatus() == e_FountainStatus::ERROR)
-        jsonObject["fountainstatus"] = "ERROR";
+    //Read Temperature
+    String tempStr;
+    jsonObject["temperature1"] = *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(0, &tempStr);
+    jsonObject["temperature2"] = *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(1, &tempStr);
 
-    jsonObject["temperature1"] = *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(0, &tmp);
-    jsonObject["temperature2"] = *CWaterPumpControl::getInstance().getTemperatureSensors()->getValueByIndexAsString(1, &tmp);
-
+    //Read WaterLimits + Current Value
     jsonObject["waterlimitdistance"] = CWaterPumpControl::getInstance().getWaterLimitMessure();
     jsonObject["waterlimitminborder"] = CWaterPumpControl::getInstance().getWaterLimitMinBorder();
     jsonObject["waterlimitmaxborder"] = CWaterPumpControl::getInstance().getWaterLimitMaxBorder();
 
-    CTimeWaterPump *pTime = CWaterPumpControl::getInstance().getRestartTimeWithDelay();
-    if (pTime != nullptr)
+    jsonObject["restarttimestr"] = "-";
+    if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr)
     {
-        jsonObject["restarttimestr"] = *pTime->getAsString(&tmp);
-    }
-    else
-    {
-        jsonObject["restarttimestr"] = "-";
+        #ifdef debug
+        #endif 
+        String* ptmp = CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tempStr);
+        Serial.print("Pumpenstart bei");
+        Serial.println(*ptmp);
+        jsonObject["restarttimestr"] = *CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tempStr);
     }
 
+    int StartDelay = CWaterPumpControl::getInstance().getWaterPump()->getTurnOnDelay();
     jsonObject["startdelay"] = String(StartDelay);
 
-    jsonObject["runtime0"] = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(0)->getAsString(&tmp);
-    jsonObject["runtime1"] = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(1)->getAsString(&tmp);
-    jsonObject["runtime2"] = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(2)->getAsString(&tmp);
+    jsonObject["runtime0"] = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(0)->getAsString(&tempStr);
+    jsonObject["runtime1"] = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(1)->getAsString(&tempStr);
+    jsonObject["runtime2"] = *CWaterPumpControl::getInstance().getSaveRunTimeReversed()->getData(2)->getAsString(&tempStr);
 
-    jsonObject["stoptime0"] = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(0)->getAsString(&tmp);
-    jsonObject["stoptime1"] = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(1)->getAsString(&tmp);
-    jsonObject["stoptime2"] = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(2)->getAsString(&tmp);
+    jsonObject["stoptime0"] = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(0)->getAsString(&tempStr);
+    jsonObject["stoptime1"] = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(1)->getAsString(&tempStr);
+    jsonObject["stoptime2"] = *CWaterPumpControl::getInstance().getStopRunTimeReversed()->getData(2)->getAsString(&tempStr);
 
+
+    //getting current Pumpmode and generate a String
+    CWaterPumpControl::getInstance().getWaterPumpModeAsStr(&waterPumpModeStr);
     jsonObject["mode"] = waterPumpModeStr;
-
-    String output;
-    jsonObject.printTo(output);
+    CWaterPumpControlAdditionalWebpages::m_JsData.clear();                          //Clear Old Data
+    jsonObject.printTo(CWaterPumpControlAdditionalWebpages::m_JsData);              //Write Data to Json Send Str
 #ifdef Debug
-    Serial.println(output);
+    Serial.println(CWaterPumpControlAdditionalWebpages::m_JsData);
 #endif
-    CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/plain", output);
+    CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/plain", CWaterPumpControlAdditionalWebpages::m_JsData);
 }
 
-void handleWaterLimitfetchdata()
+static void handleWaterLimitfetchdata()
 {
+    Serial.println("handleWaterLimitfetchdata()");
     DynamicJsonBuffer jsonBuffer;
 
     // create an object
     JsonObject &jsonObject = jsonBuffer.createObject();
-    String tmp;
+    // Put Value to json
     jsonObject["waterlimitdistance"] = CWaterPumpControl::getInstance().getWaterLimitMessure();
-    String output;
-    jsonObject.printTo(output);
-    CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/plain", output);
+
+#ifdef debug
+    Serial.print("waterlimitdistance:");
+    Serial.println(CWaterPumpControl::getInstance().getWaterLimitMessure());
+#endif 
+    //Clear Buffer
+    CWaterPumpControlAdditionalWebpages::m_JsData.clear();
+    
+    //Write to Buffer
+    jsonObject.printTo( CWaterPumpControlAdditionalWebpages::m_JsData);
+
+    // Send json Object
+    CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/plain", CWaterPumpControlAdditionalWebpages::m_JsData);
 }
 
-
-void handleRootAdditional()
+static void handleRootAdditional()
 {
     //Configure your rootpage here ....
-    CWebServerBasic::getInstance().getESP8266WebServer()->send_P(200, "text/html", html_dashboard);
+    Serial.println("handleRootAdditional()");
+    // CFileSystem::getInstance().listDir("/",1);
+
+    // CWaterPumpControlAdditionalWebpages::m_html.clear();
+    CWaterPumpControlAdditionalWebpages::m_html.clear();
+    if (CFileSystem::getInstance().readFile("/dashboard.html", &CWaterPumpControlAdditionalWebpages::m_html))
+    {
+        #ifdef debug
+        Serial.print("File /dashboard.html readed success: ");
+        //Serial.println(CWaterPumpControlAdditionalWebpages::m_html); // Should never be executed cause the serialprintbuffer will overflow !!
+        #endif
+        CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/html", CWaterPumpControlAdditionalWebpages::m_html);
+    }
+    else
+    {
+        #ifdef debug
+        Serial.println("Failed reading dashboard.html");
+        #endif
+    }
+
 }
 
-void handleChangeWaterPumpModeData()
+static void handleChangeWaterPumpModeData()
 {
+    Serial.println("handleChangeWaterPumpModeData()");
 
     // Parameters
     int mode = getJsonObjectFromResponse()["mode"]; // 1
@@ -165,12 +174,15 @@ void handleChangeWaterPumpModeData()
     }
 }
 
-void handleChangeStartDelay()
+static void handleChangeStartDelay()
 {
     int startInMinutes = getJsonObjectFromResponse()["startdelayinminutes"];
+    #ifdef debug
+    Serial.println("handleChangeStartDelay()");
     Serial.print("StartDelay Set to: ");
     Serial.print(startInMinutes);
     Serial.println("min");
+    #endif
 
     CWaterPumpControl::getInstance().setTurnOnDelay(startInMinutes);
 
@@ -178,8 +190,9 @@ void handleChangeStartDelay()
     CFileSystem::getInstance().writeFile("/startdelay.txt", &str);
 }
 
-void handleChangeWaterLimitMax()
+static void handleChangeWaterLimitMax()
 {
+    Serial.println("handleChangeWaterLimitMax()");
     int max = getJsonObjectFromResponse()["waterlimitmax"];
     Serial.print("Max Set to: ");
     Serial.println(max);
@@ -190,11 +203,14 @@ void handleChangeWaterLimitMax()
     CFileSystem::getInstance().writeFile("/watermax.txt", &str);
 }
 
-void handleChangeWaterLimitMin()
+static void handleChangeWaterLimitMin()
 {
+    Serial.println("handleChangeWaterLimitMin()");
     int min = getJsonObjectFromResponse()["waterlimitmin"];
+    #ifdef debug
     Serial.print("Min Set to: ");
     Serial.println(min);
+    #endif
 
     CWaterPumpControl::getInstance().setWaterLimitMin(min);
 
@@ -202,39 +218,35 @@ void handleChangeWaterLimitMin()
     CFileSystem::getInstance().writeFile("/watermin.txt", &str);
 }
 
-void getWaterPumpControlMode()
+static void getWaterPumpControlMode()
 {
-    String outputStr;
-
-    switch (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode())
-    {
-    case AUTO:
-        outputStr = "AUTO";
-        break;
-    case MANUELON:
-        outputStr = "MANUELON";
-        break;
-    case MANUELOFF:
-        outputStr = "MANUELOFF";
-        break;
-    default:
-        break;
-    };
-
-    CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/plain", outputStr);
+    String output;
+    CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/plain", *CWaterPumpControl::getInstance().getWaterPumpModeAsStr(&output));
 }
 
-void handleWaterLimitBoard()
+static void handleWaterLimitBoard()
 {
     Serial.println("try to send g_watermessuredashboard...");
-    CWebServerBasic &Server = CWebServerBasic::getInstance();
-    Server.getESP8266WebServer()->send_P(200, "text/html", html_watermeasuredashboard);
+    CWaterPumpControlAdditionalWebpages::m_html.clear();
+    if (CFileSystem::getInstance().readFile("/watermeasuredashboard.html", &CWaterPumpControlAdditionalWebpages::m_html))
+    {
+        #ifdef debug
+        Serial.print("File watermeasuredashboard.html readed success: ");
+        // Serial.println(CWaterPumpControlAdditionalWebpages::m_html); // Care this will maybe overflow the serial buffer!
+        #endif
+
+        CWebServerBasic::getInstance().getESP8266WebServer()->send(200, "text/html", CWaterPumpControlAdditionalWebpages::m_html);
+    }
+    else
+    {
+        Serial.println("Failed reading html_watermeasuredashboard.html");
+    }
 }
 
 void CWaterPumpControlAdditionalWebpages::setupAdditionalWebpagesAPMode()
 {
     // this->getWebServerBasic()->setupAdditionalAPModeWebPages();
-    
+
     ///insert new routes  here
 
     // this->m_pWebServerBasic->start();
@@ -242,24 +254,21 @@ void CWaterPumpControlAdditionalWebpages::setupAdditionalWebpagesAPMode()
 
 void CWaterPumpControlAdditionalWebpages::setupAdditionalWebPageNormalMode()
 {
-    #ifdef debug
+#ifdef debug
     Serial.println("Setting up setupAdditionalWebPageNormalMode()");
-    #endif
+#endif
     CWebServerBasic &Server = CWebServerBasic::getInstance();
-    Server.getESP8266WebServer()->on("/"                     , handleRootAdditional);
-    Server.getESP8266WebServer()->on("/mode"                 , getWaterPumpControlMode);
-    Server.getESP8266WebServer()->on("/fetchdata"            , handleFetchDataForDashBoardAdditional);
-    Server.getESP8266WebServer()->on("/waterlimit"           , handleWaterLimitBoard);
-    Server.getESP8266WebServer()->on("/waterlimitfetchdata"  , handleWaterLimitfetchdata);
-    Server.getESP8266WebServer()->on("/startdelay"           , handleChangeStartDelay);
-    Server.getESP8266WebServer()->on("/waterlimitmax"        , handleChangeWaterLimitMax);
-    Server.getESP8266WebServer()->on("/waterlimitmin"        , handleChangeWaterLimitMin);
-    Server.getESP8266WebServer()->on("/changemode"           , handleChangeWaterPumpModeData);
-
+    Server.getESP8266WebServer()->on("/",                    handleRootAdditional);
+    Server.getESP8266WebServer()->on("/mode",                getWaterPumpControlMode);
+    Server.getESP8266WebServer()->on("/fetchdata",           handleFetchDataForDashBoardAdditional);
+    Server.getESP8266WebServer()->on("/waterlimit",          handleWaterLimitBoard);
+    Server.getESP8266WebServer()->on("/waterlimitfetchdata", handleWaterLimitfetchdata);
+    Server.getESP8266WebServer()->on("/startdelay",          handleChangeStartDelay);
+    Server.getESP8266WebServer()->on("/waterlimitmax",       handleChangeWaterLimitMax);
+    Server.getESP8266WebServer()->on("/waterlimitmin",       handleChangeWaterLimitMin);
+    Server.getESP8266WebServer()->on("/changemode",          handleChangeWaterPumpModeData);
 
     ///insert new routes  here
 
-
     Server.getESP8266WebServer()->begin();
-
 }

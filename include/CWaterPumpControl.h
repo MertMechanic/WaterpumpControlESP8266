@@ -65,8 +65,8 @@ public:
     bool isWaterInFountain();
     // CTimeWaterPump *getRestartTimeWithDelay();
     CTimeWaterPump *getCurrentCWaterPumpControlTime();
-
-
+    String* getWaterPumpModeAsStr(String *m_pDestinationStr);
+    String* getFountainStatusAsString(String *_pFountainStatus);
     
 
     static const int S_SIZEOFTIMESSAVED = 3;
@@ -110,11 +110,11 @@ private:
     CSensorAdafruit_VL53L0X     m_SensorAdafruit_VL53L0X;
     Clcd                       *m_pLcd;
 
-    bool m_ModeHasChanged;
-    int  m_DisplayFlag;
-    int  m_LastSwitchCounter;
-    CTimeWaterPump* m_restartTimeWithDelay;  //A Date of Turning on 
-    CTimeWaterPump m_currentTime;
+    bool                        m_ModeHasChanged;
+    int                         m_DisplayFlag;
+    int                         m_LastSwitchCounter;
+    CTimeWaterPump*             m_restartTimeWithDelay;         //A Date of Turning on 
+    CTimeWaterPump              m_currentTime;
 
     static const int S_ACTIVATELIMITBORDER      = 4;
     static const int S_COUNTOFTEMPERAURESENSORS = 2;
@@ -135,19 +135,17 @@ private:
     void saveRunTime(CTimeWaterPump *_pTime);
 
 
-    CTimeWaterPumpRingBuffer* m_pLastPumpRunTimeRingBuffer;
-    CTimeWaterPumpRingBuffer* m_pLastPumpStopTimeRingBuffer;
+    CTimeWaterPumpRingBuffer m_LastPumpRunTimeRingBuffer;
+    CTimeWaterPumpRingBuffer m_LastPumpStopTimeRingBuffer;
     
     CTimeWaterPumpRingBuffer* reverseTimeWaterPumpArray(CTimeWaterPumpRingBuffer *_pArray, CTimeWaterPumpRingBuffer *_pDestination);
+    
     //OLD START
     // CTimeWaterPump* reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination);
-
-
     // CTimeWaterPump m_LastPumpStopTimeArray[S_COUNTOFTIMESAVE];
     // CTimeWaterPump m_LastPumpRunTimeArray[S_COUNTOFTIMESAVE];
     // CTimeWaterPump* reverseTimeWaterPumpArray(CTimeWaterPump *_pArray, CTimeWaterPump *_pDestination);
     //OLD END 
-
 
     //Counter is pointing to the position which need to be written next time ....
     int m_CurrentStopCounter;
