@@ -36,8 +36,9 @@ CWaterPumpControlAdditionalWebpages::~CWaterPumpControlAdditionalWebpages()
  */
 static void handleFetchDataForDashBoardAdditional()
 {
+#ifdef debug
     Serial.println("handleFetchDataForDashBoardAdditional()");
-
+#endif
     String waterPumpModeStr;
 
 
@@ -65,11 +66,11 @@ static void handleFetchDataForDashBoardAdditional()
     jsonObject["restarttimestr"] = "-";
     if (CWaterPumpControl::getInstance().getRestartTimeWithDelay() != nullptr)
     {
-        #ifdef debug
-        #endif 
-        String* ptmp = CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tempStr);
+#ifdef debug
+        String *ptmp = CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tempStr);
         Serial.print("Pumpenstart bei");
         Serial.println(*ptmp);
+#endif
         jsonObject["restarttimestr"] = *CWaterPumpControl::getInstance().getRestartTimeWithDelay()->getAsString(&tempStr);
     }
 
@@ -123,7 +124,9 @@ static void handleWaterLimitfetchdata()
 static void handleRootAdditional()
 {
     //Configure your rootpage here ....
+#ifdef debug
     Serial.println("handleRootAdditional()");
+#endif
     // CFileSystem::getInstance().listDir("/",1);
 
     // CWaterPumpControlAdditionalWebpages::m_html.clear();
@@ -147,8 +150,9 @@ static void handleRootAdditional()
 
 static void handleChangeWaterPumpModeData()
 {
+#ifdef debug
     Serial.println("handleChangeWaterPumpModeData()");
-
+#endif
     // Parameters
     int mode = getJsonObjectFromResponse()["mode"]; // 1
 
@@ -156,17 +160,23 @@ static void handleChangeWaterPumpModeData()
     {
     case 0:
         CWaterPumpControl::getInstance().changeModeToAuto();
+#ifdef debug
         Serial.println("change mode by http to AUTO");
+#endif
         break;
 
     case 1:
         CWaterPumpControl::getInstance().changeModeToManuelOn();
+#ifdef debug
         Serial.println("change mode by http to ManuelON");
+#endif
         break;
 
     case 2:
         CWaterPumpControl::getInstance().changeModeToManuelOff();
+#ifdef debug
         Serial.println("change mode by http to ManuelOff");
+#endif
         break;
 
     default:
@@ -177,12 +187,12 @@ static void handleChangeWaterPumpModeData()
 static void handleChangeStartDelay()
 {
     int startInMinutes = getJsonObjectFromResponse()["startdelayinminutes"];
-    #ifdef debug
+#ifdef debug
     Serial.println("handleChangeStartDelay()");
     Serial.print("StartDelay Set to: ");
     Serial.print(startInMinutes);
     Serial.println("min");
-    #endif
+#endif
 
     CWaterPumpControl::getInstance().setTurnOnDelay(startInMinutes);
 
@@ -192,10 +202,12 @@ static void handleChangeStartDelay()
 
 static void handleChangeWaterLimitMax()
 {
-    Serial.println("handleChangeWaterLimitMax()");
     int max = getJsonObjectFromResponse()["waterlimitmax"];
+#ifdef debug
+    Serial.println("handleChangeWaterLimitMax()");
     Serial.print("Max Set to: ");
     Serial.println(max);
+#endif
 
     CWaterPumpControl::getInstance().setWaterLimitMax(max);
 

@@ -7,7 +7,7 @@ class CSensorAdafruit_VL53L0X
 public:
     ~CSensorAdafruit_VL53L0X();
 
-    static void initLongRange();
+    static int initLongRange();
     static void printSerial();
     static int  doMeasureAndGetValue();
     static int  getMiddleValue();
@@ -27,12 +27,12 @@ public:
      static int m_MesureValue;
 
      static int m_counterOfFailedMessures;
-     static const int s_maxFailedMessures = 500;
+     static const int s_maxFailedMessures = 5;
 
      static bool m_MeasureStatusOK;
-     static const int s_MAX_RANGE = 3000;
+     static const int s_MAX_RANGE = 2200;
 
-     static const int s_MiddleValueArraySize = 10;
+     static const int s_MiddleValueArraySize = 50;
      static int m_MiddleValues[s_MiddleValueArraySize];
      static int m_CurrentBufferPosition;
 };

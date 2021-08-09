@@ -20,7 +20,7 @@
 
 //** Commend this out for Debugging 
 //
-//#define debug 1
+// #define debug 1
 //#define noWIFIREST 1
 
 
@@ -94,13 +94,37 @@ void CWaterPumpControl::init()
   Serial.println("Init LCD Setup");
 #endif
 
-  //Init I2C Bus
-  Wire.begin(PIN_SCL, PIN_SDA),
+  //Init I2C Bus                                  //Init I2C Bus is not needed - will be done on LCD MODULE
+  // Wire.begin(PIN_SCL, PIN_SDA);
   //Init LCD Display
   Clcd::getInstance().init();                     //Init LCD
-  // this->m_pLcd = &Clcd::getInstance();            //LCD Singleton
+  this->m_DisplayModeFlag = e_DisplayModeFlag::SINCEMODE;
+
+///INIT TOF
+#ifdef debug
+  Serial.println("Init TOF Sensor");
+#endif
   CSensorAdafruit_VL53L0X sensor;
-  sensor.initLongRange();
+
+while(sensor.initLongRange() != 0 )
+{
+  String str1 = "Failed init TOF";
+  String str2 = "Check Wires!";
+
+  Clcd::getInstance().setDisplayText(&str1, &str2);
+  delay(300);
+  Clcd::getInstance().turnOffBackLight();
+  delay(100);
+  Clcd::getInstance().turnOnBacklightAndTurnOffLater();
+#ifdef debug
+  Serial.println("Init TOF Sensor - FAILED");
+#endif
+}
+#ifdef debug
+  Serial.println("Init TOF Sensor - SUCCESS");
+#endif
+
+  
 
     // delay(100);
     // attachTimerToSensor();
@@ -376,8 +400,37 @@ void CWaterPumpControl::run()
           #ifdef debug
           Serial.println("Fountain full + Pump running....");
           #endif
+          String lineA;
+          String lineB;
+          int    Messure;
+          switch (this->m_DisplayModeFlag)
+          {
+          case e_DisplayModeFlag::SINCEMODE:
+            Clcd::getInstance().showWaterIsNotEmptySinceTime();
+            break;
 
-          Clcd::getInstance().showWaterIsNotEmptySinceTime();
+          case e_DisplayModeFlag::TOFMESSUREMODE:
+
+             Messure = CWaterPumpControl::getInstance().getSensorAdafruit_VL53L0X()->getMiddleValue();
+            lineA = "Messung: ";
+
+            if (Messure == -1)
+            {
+              lineA = lineA + "ERROR !";
+            }
+            else
+            {
+              lineA = lineA + String(Messure) + "mm";
+            }
+
+            lineB = "Min:" + String(this->S_WaterLimitEmptyBorder) + "Max:" + String(this->S_WaterLimitFullBorder);
+            Clcd::getInstance().setDisplayText(&lineA, &lineB);
+            break;
+
+          default:
+            break;
+          }
+          
         }
         //Fountain filled and pump Stopped
         else if (this->isWaterInFountain() && this->m_pWaterpump->isWaterPumpStopped())
@@ -608,19 +661,44 @@ void CWaterPumpControl::readInputButtons()
   if (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode() == AUTO)
   {
     //Left Button pressed
-    if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
+    if (digitalRead(PIN_BUTTON_LEFT)   == LOW  && 
+        digitalRead(PIN_BUTTON_MIDDLE) == HIGH && 
+        digitalRead(PIN_BUTTON_RIGHT)  == HIGH)
     {
+      #ifdef debug
       Serial.println("left pressed in automode");
+      #endif
       Clcd::getInstance().turnOnBacklightAndTurnOffLater();
+
+      if(CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode() == WaterPumpModeType::AUTO &&
+         CWaterPumpControl::getInstance().getDisplayModeFlag() == e_DisplayModeFlag::SINCEMODE)
+      {
+        CWaterPumpControl::getInstance().setDisplayModeFlag(e_DisplayModeFlag::TOFMESSUREMODE);
+        #ifdef debug
+        Serial.println("e_DisplayModeFlag::TOFMESSUREMODE");
+      #endif
+      }
+      else
+      {
+        CWaterPumpControl::getInstance().setDisplayModeFlag(e_DisplayModeFlag::SINCEMODE);
+        #ifdef debug
+        Serial.println("e_DisplayModeFlag::SINCEMODE");
+        #endif
+
+      }
     }
     //Middle Button pressed
-    else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
+    else if (digitalRead(PIN_BUTTON_LEFT)   == HIGH &&
+             digitalRead(PIN_BUTTON_MIDDLE) == LOW  && 
+             digitalRead(PIN_BUTTON_RIGHT)  == HIGH)
     {
       Serial.println("middle pressed in automode");
       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::MANUELON);
     }
     //Right Button pressed
-    else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
+    else if (digitalRead(PIN_BUTTON_LEFT)   == HIGH && 
+             digitalRead(PIN_BUTTON_MIDDLE) == HIGH && 
+             digitalRead(PIN_BUTTON_RIGHT)   == LOW)
     {
       Serial.println("right pressed in automode");
       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::MANUELOFF);
@@ -629,19 +707,25 @@ void CWaterPumpControl::readInputButtons()
   else if (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode() == MANUELON)
   {
     //Left Button pressed
-    if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
+    if (digitalRead(PIN_BUTTON_LEFT) == LOW  && 
+    digitalRead(PIN_BUTTON_MIDDLE)   == HIGH && 
+    digitalRead(PIN_BUTTON_RIGHT)    == HIGH)
     {
       Serial.println("left pressed in MANUELON");
       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::AUTO);
     }
     //Middle Button pressed
-    else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
+    else if (digitalRead(PIN_BUTTON_LEFT)   == HIGH && 
+             digitalRead(PIN_BUTTON_MIDDLE) == LOW  && 
+             digitalRead(PIN_BUTTON_RIGHT)  == HIGH)
     {
       Serial.println("middle pressed in MANUELON");
       Clcd::getInstance().turnOnBacklightAndTurnOffLater();
     }
     //Right Button pressed
-    else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
+    else if (digitalRead(PIN_BUTTON_LEFT)   == HIGH && 
+             digitalRead(PIN_BUTTON_MIDDLE) == HIGH && 
+             digitalRead(PIN_BUTTON_RIGHT)  == LOW)
     {
       Serial.println("right pressed in MANUELON");
       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::MANUELOFF);
@@ -650,19 +734,25 @@ void CWaterPumpControl::readInputButtons()
   else if (CWaterPumpControl::getInstance().getWaterPump()->getWaterPumpMode() == MANUELOFF)
   {
     //Left Button pressed
-    if (digitalRead(PIN_BUTTON_LEFT) == LOW && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
+    if (digitalRead(PIN_BUTTON_LEFT)   == LOW  && 
+        digitalRead(PIN_BUTTON_MIDDLE) == HIGH && 
+        digitalRead(PIN_BUTTON_RIGHT)  == HIGH)
     {
       Serial.println("left pressed in MANUELOFF");
       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::AUTO);
     }
     //Middle Button pressed
-    else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == LOW && digitalRead(PIN_BUTTON_RIGHT) == HIGH)
+    else if (digitalRead(PIN_BUTTON_LEFT)   == HIGH && 
+             digitalRead(PIN_BUTTON_MIDDLE) == LOW  && 
+             digitalRead(PIN_BUTTON_RIGHT)  == HIGH)
     {
       Serial.println("middle pressed in MANUELOFF");
       CWaterPumpControl::getInstance().assignWaterPumpMode(WaterPumpModeType::MANUELON);
     }
     //Right Button pressed
-    else if (digitalRead(PIN_BUTTON_LEFT) == HIGH && digitalRead(PIN_BUTTON_MIDDLE) == HIGH && digitalRead(PIN_BUTTON_RIGHT) == LOW)
+    else if (digitalRead(PIN_BUTTON_LEFT)   == HIGH && 
+             digitalRead(PIN_BUTTON_MIDDLE) == HIGH && 
+             digitalRead(PIN_BUTTON_RIGHT)  == LOW)
     {
       Serial.println("right pressed in MANUELOFF");
       Clcd::getInstance().turnOnBacklightAndTurnOffLater();
@@ -827,8 +917,8 @@ void CWaterPumpControl::readIsWaterInFountain()
 #endif
 
   // int WaterLimitValue = CWaterPumpControl::getInstance().getUltraSonicSensor()->getDistanceInCM();
-  // int WaterLimitValue = CWaterPumpControl::getInstance().getSensorAdafruit_VL53L0X()->getMiddleValue();
-  int WaterLimitValue = CWaterPumpControl::getInstance().getSensorAdafruit_VL53L0X()->m_MesureValue;
+  int WaterLimitValue = CWaterPumpControl::getInstance().getSensorAdafruit_VL53L0X()->getMiddleValue();
+  // int WaterLimitValue = CWaterPumpControl::getInstance().getSensorAdafruit_VL53L0X()->m_MesureValue;
 
   // int WaterLimitValue = 10;
   Serial.print("MessureValue: ");
@@ -1031,4 +1121,14 @@ String* CWaterPumpControl::getFountainStatusAsString(String *_pFountainStatus)
     break;
   };
   return _pFountainStatus;
+}
+
+e_DisplayModeFlag CWaterPumpControl::getDisplayModeFlag()
+{
+  return this->m_DisplayModeFlag;
+}
+
+void CWaterPumpControl::setDisplayModeFlag(e_DisplayModeFlag _flag)
+{
+  this->m_DisplayModeFlag = _flag;
 }

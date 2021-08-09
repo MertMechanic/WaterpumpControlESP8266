@@ -28,9 +28,9 @@
 #define PIN_RELAIS_0 D4
 #define PIN_RELAIS_1 D4
 // #define PIN_RELAIS_1 D2
-#define PIN_SDA D1
+#define PIN_SDA D2
 // #define PIN_SDA D3
-#define PIN_SCL D2
+#define PIN_SCL D1
 #define PIN_BUTTON_LEFT D5
 #define PIN_BUTTON_MIDDLE D6
 #define PIN_BUTTON_RIGHT D7
@@ -45,12 +45,3 @@
 
 
 enum WaterPumpModeType{AUTO, MANUELON, MANUELOFF};
-
-
-
-
-
-
-
-
-

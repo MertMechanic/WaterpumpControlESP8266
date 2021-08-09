@@ -22,7 +22,9 @@ class CWebServerBasic           ;
 
 class CSensorAdafruit_VL53L0X;
 
-enum e_FountainStatus { FILLED, EMPTY, OVERFILLED, OVEREMPTY, ERROR};
+enum e_FountainStatus { FILLED, EMPTY, OVERFILLED, OVEREMPTY, ERROR };
+enum e_DisplayModeFlag{ SINCEMODE, TOFMESSUREMODE };
+
 
 class CWaterPumpControl
 {
@@ -97,6 +99,9 @@ public:
 
     e_FountainStatus getFountainStatus();
 
+    e_DisplayModeFlag getDisplayModeFlag();
+    void              setDisplayModeFlag(e_DisplayModeFlag _flag);
+
     CSensorAdafruit_VL53L0X* getSensorAdafruit_VL53L0X();
 
 private:
@@ -111,7 +116,7 @@ private:
     Clcd                       *m_pLcd;
 
     bool                        m_ModeHasChanged;
-    int                         m_DisplayFlag;
+    e_DisplayModeFlag           m_DisplayModeFlag;
     int                         m_LastSwitchCounter;
     CTimeWaterPump*             m_restartTimeWithDelay;         //A Date of Turning on 
     CTimeWaterPump              m_currentTime;
