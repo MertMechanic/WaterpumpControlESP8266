@@ -4,6 +4,7 @@
 VL53L0X_RangingMeasurementData_t CSensorAdafruit_VL53L0X::m_Measure;
 const int   CSensorAdafruit_VL53L0X::s_maxFailedMessures;
 bool        CSensorAdafruit_VL53L0X::m_MeasureStatusOK = false;
+bool        CSensorAdafruit_VL53L0X::m_DummyFlag       = true;
 int         CSensorAdafruit_VL53L0X::m_MesureValue;
 int         CSensorAdafruit_VL53L0X::m_counterOfFailedMessures;
 int         CSensorAdafruit_VL53L0X::m_MiddleValues[CSensorAdafruit_VL53L0X::s_MiddleValueArraySize];
@@ -92,6 +93,41 @@ bool CSensorAdafruit_VL53L0X::doMeasure()
         // Serial.println(" out of range ");
     }
     return false;
+}
+
+
+bool CSensorAdafruit_VL53L0X::doDummyMeasure()
+{
+
+    /**
+     * @brief Check Value is on Min or max border
+     * 
+     */
+    if (CSensorAdafruit_VL53L0X::m_MesureValue == -1)
+    {
+        CSensorAdafruit_VL53L0X::m_DummyFlag = true; //Counting upwards
+    }
+    else if (CSensorAdafruit_VL53L0X::m_MesureValue == CSensorAdafruit_VL53L0X::s_MAX_RANGE)
+    {
+        CSensorAdafruit_VL53L0X::m_DummyFlag = false; //Counting downwards
+    }
+    
+    /**
+     * @brief Count to direction
+     * 
+     */
+    if (CSensorAdafruit_VL53L0X::m_DummyFlag)
+    {
+        CSensorAdafruit_VL53L0X::m_MesureValue++;  //UP
+    }
+    else
+    {
+        CSensorAdafruit_VL53L0X::m_MesureValue--; //DOWN
+    }
+
+    CSensorAdafruit_VL53L0X::addNewValueToMiddleValueArray();
+    return true;
+
 }
 
 int CSensorAdafruit_VL53L0X::getMeasureValue()

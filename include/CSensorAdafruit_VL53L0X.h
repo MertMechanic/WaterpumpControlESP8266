@@ -12,8 +12,9 @@ public:
     static int  doMeasureAndGetValue();
     static int  getMiddleValue();
     static bool doMeasure();                //Call this in Interrupt!
+
+    static bool doDummyMeasure();           //Dummy implmentation for simulation
     static int  getMeasureValue();
-    
     
 
  private:
@@ -27,10 +28,13 @@ public:
      static int m_MesureValue;
 
      static int m_counterOfFailedMessures;
-     static const int s_maxFailedMessures = 5;
+     static const int s_maxFailedMessures = 25;
 
      static bool m_MeasureStatusOK;
      static const int s_MAX_RANGE = 2200;
+
+
+     static bool m_DummyFlag;
 
      static const int s_MiddleValueArraySize = 50;
      static int m_MiddleValues[s_MiddleValueArraySize];

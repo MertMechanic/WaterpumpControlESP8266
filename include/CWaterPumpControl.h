@@ -22,9 +22,9 @@ class CWebServerBasic           ;
 
 class CSensorAdafruit_VL53L0X;
 
-enum e_FountainStatus { FILLED, EMPTY, OVERFILLED, OVEREMPTY, ERROR };
-enum e_DisplayModeFlag{ SINCEMODE, TOFMESSUREMODE };
-
+enum e_FountainStatus_Flag { FILLED, EMPTY, OVERFILLED, OVEREMPTY, ERROR };
+enum e_DisplayMode_Flag{ SINCEMODE, TOFMESSUREMODE };
+enum e_SensorAdafruit_Status_Flag { ACTIVE, DISBALED };
 
 class CWaterPumpControl
 {
@@ -97,10 +97,10 @@ public:
     static void setWaterLimitMax(int _max);
     static void setWaterLimitMin(int _min);
 
-    e_FountainStatus getFountainStatus();
+    e_FountainStatus_Flag getFountainStatus();
 
-    e_DisplayModeFlag getDisplayModeFlag();
-    void              setDisplayModeFlag(e_DisplayModeFlag _flag);
+    e_DisplayMode_Flag getDisplayModeFlag();
+    void              setDisplayModeFlag(e_DisplayMode_Flag _flag);
 
     CSensorAdafruit_VL53L0X* getSensorAdafruit_VL53L0X();
 
@@ -111,12 +111,14 @@ private:
     WiFiUDP                    *m_pNtpUDP;
     CWebServerBasic            *m_pWebServer;  
     TemperatureSensor           m_TemperatureSensors;
-    // CUltraSonicSensor           m_UltraSonicSensor;
-    CSensorAdafruit_VL53L0X     m_SensorAdafruit_VL53L0X;
+    
+    CSensorAdafruit_VL53L0X      m_SensorAdafruit_VL53L0X;
+    e_SensorAdafruit_Status_Flag m_SensorAdafruit_Status;
+
     Clcd                       *m_pLcd;
 
     bool                        m_ModeHasChanged;
-    e_DisplayModeFlag           m_DisplayModeFlag;
+    e_DisplayMode_Flag           m_DisplayModeFlag;
     int                         m_LastSwitchCounter;
     CTimeWaterPump*             m_restartTimeWithDelay;         //A Date of Turning on 
     CTimeWaterPump              m_currentTime;
@@ -158,11 +160,11 @@ private:
     static void attachTimerToInputButtons();
     static void attachTimerToReadFountainFilled();
     static void attachTimerToSensorAdafruit_VL53L0X();
+    static void attachTimerToDummySensor();
 
     bool m_IsTimerTemperatureAndWaterLimitAttached;
 
-
-    static e_FountainStatus S_FountainStatus;
+    static e_FountainStatus_Flag S_FountainStatus;
     
     static int S_WaterLimitMessure;
     static int S_WaterLimitEmptyBorder;
