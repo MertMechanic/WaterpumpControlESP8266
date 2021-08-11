@@ -13,7 +13,14 @@
       <div class="container-fluid">
       <div class="row">
          <div class="form-inline col-sm-12 p-4">
-            <h3>Wallway Waterpump Control V1.0 by Mert Mechanic</h3>
+       <div class="col-sm-12">
+            <h3 class="center text-center"> Wallway Waterpump Control V1.0 </h3>
+        </div>
+        <div class="col-sm-12">
+        <h6 class ="text-center">
+        by Mert Mechanic
+        </h6>
+        </div>
             <h2 class="status col-sm-12 text-center statusbox" id="pumpstatus" style="font-size:4rem;margin-bottom:2rem">status</h2>
             <div id="myProgress">
                <div id="myBar">0%</div>
@@ -107,19 +114,43 @@
          </table>
          </div>
          <div class="col-sm-12 form-inline">
+         
          <form class="form-inline col-sm-12 p-05">
          <input id="startdelayinput" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Einschaltverzoegerung" style="width:unset">
-         <div class="col-sm-6">min</div>
+         <div class="col-sm-1">min</div>
          <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendDatastartdelayinminutes()>Setzen</button>
          </form>
+
+        <div class="col-sm-2"></div>
+        <div class="col-sm-2"></div>
+        <div class="col-sm-2"></div>
+
          <form class="form-inline col-sm-12 p-05">
          <input id="waterlimitmax" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Voll" style="width:unset">
-         <div class="col-sm-6"></div>
-         
+         <div class="col-sm-1">mm</div>
          <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendWaterLimitMax()>Setzen</button>
-         </form><form class="form-inline col-sm-12 p-05">
-         <input id="waterlimitmin" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Leer" style="width:unset"><div class="col-sm-6"></div>
-         <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendWaterLimitMin()>Setzen</button></form><div class="col-sm-12"> </div>
+         </form>
+
+        <div class="col-sm-2"></div>
+        <div class="col-sm-2"></div>
+        <div class="col-sm-2"></div>
+         
+         <form class="form-inline col-sm-12 p-05">
+         <input id="waterlimitmin" class="form-control mr-sm-2 col-sm-2" type="text" placeholder="Leer" style="width:unset">
+         <div class="col-sm-1">mm</div>
+         <button class="btn btn-primary my-2 my-sm-0 col-sm-2" type="button" onclick=sendWaterLimitMin()>Setzen</button>
+
+        <div class="col-sm-2"></div>
+        <div class="col-sm-2"></div>
+        <div class="col-sm-2"> <a href="/waterlimit"> <button class="btn btn-secondary" type="button" onclick=sendWaterLimitMin()>Go to Waterlimit Board</button></div></a>
+
+         </form>
+         
+         <div class="col-sm-12"> </div>
+
+
+
+         
          <div class="btn-group btn-group-lg col-sm-12 p-4" role="group">
          <button id="autoactive" class="btn btn-secondary ###LABELAUTOACTIVE###" type="button" onclick=sendModeData(0)>AUTO</button>
          <button id="manuelon" class="btn btn-secondary ###LABELMANUELONACTIVE###" type="button" onclick=sendModeData(1)>Manuell AN</button>
@@ -211,7 +242,7 @@ function fetchData() {
     var a = "fetchdata";
     b.onreadystatechange = function(w) {
         if (this.readyState == 4 && this.status == 200) {
-            console.log(this.responseText);
+            //console.log(this.responseText);
             var A = JSON.parse(this.responseText);
             var m = A.mode;
             var n = A.startdelay;
